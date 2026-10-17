@@ -10,7 +10,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Path;
 import android.graphics.Paint;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
@@ -112,8 +111,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         for (int id : ids) {
             RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.calendar_widget);
             if (cachedBitmap != null) {
-                views.setImageViewBitmap(R.id.calendar_image, roundedCopy(appContext, cachedBitmap));
-                if (cachedDarkBitmap != null) views.setImageViewBitmap(R.id.calendar_image_dark, roundedCopy(appContext, cachedDarkBitmap));
+                views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
+                if (cachedDarkBitmap != null) views.setImageViewBitmap(R.id.calendar_image_dark, cachedDarkBitmap);
                 views.setTextViewText(R.id.widget_footer, today + " · 单向历 · 点击打开设置");
             } else {
                 views.setTextViewText(R.id.widget_footer, "正在加载今日单向历… · 点击打开设置");
@@ -200,18 +199,6 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 == Configuration.UI_MODE_NIGHT_YES;
     }
 
-    private static Bitmap roundedCopy(Context context, Bitmap source) {
-        float radius = 12f * context.getResources().getDisplayMetrics().density;
-        Bitmap output = Bitmap.createBitmap(source.getWidth(), source.getHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(output);
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        Path path = new Path();
-        path.addRoundRect(0f, 0f, source.getWidth(), source.getHeight(), radius, radius, Path.Direction.CW);
-        canvas.clipPath(path);
-        canvas.drawBitmap(source, 0f, 0f, paint);
-        return output;
-    }
-
     private static Bitmap invertedCopy(Bitmap source) {
         Bitmap copy = source.copy(Bitmap.Config.ARGB_8888, true);
         Canvas canvas = new Canvas(copy);
@@ -257,8 +244,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         ComponentName component = new ComponentName(context, CalendarWidgetProvider.class);
         for (int id : manager.getAppWidgetIds(component)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
-            views.setImageViewBitmap(R.id.calendar_image, roundedCopy(context, lightBitmap));
-            views.setImageViewBitmap(R.id.calendar_image_dark, roundedCopy(context, darkBitmap));
+            views.setImageViewBitmap(R.id.calendar_image, lightBitmap);
+            views.setImageViewBitmap(R.id.calendar_image_dark, darkBitmap);
             views.setTextViewText(R.id.widget_footer, footer);
             PendingIntent imageClick = PendingIntent.getActivity(
                     context, 1003,
@@ -283,8 +270,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         if (cachedBitmap != null && cachedDarkBitmap == null) cachedDarkBitmap = invertedCopy(cachedBitmap);
         for (int id : manager.getAppWidgetIds(component)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
-            if (cachedBitmap != null) views.setImageViewBitmap(R.id.calendar_image, roundedCopy(context, cachedBitmap));
-            if (cachedDarkBitmap != null) views.setImageViewBitmap(R.id.calendar_image_dark, roundedCopy(context, cachedDarkBitmap));
+            if (cachedBitmap != null) views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
+            if (cachedDarkBitmap != null) views.setImageViewBitmap(R.id.calendar_image_dark, cachedDarkBitmap);
             views.setTextViewText(R.id.widget_footer, footer + " · 点击打开设置");
             PendingIntent imageClick = PendingIntent.getActivity(
                     context, 1003,
