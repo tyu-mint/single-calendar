@@ -45,6 +45,7 @@
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.icetea.singlecalendar.REFRESH" />
                 <action android:name="com.icetea.singlecalendar.DAILY_UPDATE" />
+                <action android:name="com.icetea.singlecalendar.THEME_CHECK" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
