@@ -1,39 +1,26 @@
 package com.icetea.singlecalendar;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.ContentValues;
-import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.ComponentName;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.core.content.FileProvider;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.OutputStream;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
-    private ImageView imageView;
-    private TextView hint;
-    private File cachedImage;
+    private static final String LAUNCHER_ALIAS = "com.icetea.singlecalendar.LauncherAlias";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,124 +28,102 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(Color.rgb(244, 240, 231));
         getWindow().setNavigationBarColor(Color.rgb(244, 240, 231));
         getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+                android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                        | android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
 
-        FrameLayout root = new FrameLayout(this);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(dp(28), dp(52), dp(28), dp(28));
         root.setBackgroundColor(Color.rgb(244, 240, 231));
 
-        imageView = new ImageView(this);
-        imageView.setBackgroundColor(Color.rgb(244, 240, 231));
-        imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        imageView.setContentDescription("今日单向历大图");
-        root.addView(imageView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        TextView title = new TextView(this);
+        title.setText("单向历");
+        title.setTextColor(Color.rgb(49, 44, 38));
+        title.setTextSize(32);
+        title.setGravity(Gravity.CENTER);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        root.addView(title, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        hint = new TextView(this);
-        hint.setTextColor(Color.rgb(102, 95, 85));
-        hint.setTextSize(15);
-        hint.setGravity(Gravity.CENTER);
-        hint.setPadding(dp(24), dp(12), dp(24), dp(12));
-        FrameLayout.LayoutParams hintParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
-        root.addView(hint, hintParams);
+        TextView subtitle = new TextView(this);
+        subtitle.setText("把今天的单向历，放在桌面上。");
+        subtitle.setTextColor(Color.rgb(102, 95, 85));
+        subtitle.setTextSize(16);
+        subtitle.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        subtitleParams.topMargin = dp(12);
+        root.addView(subtitle, subtitleParams);
 
-        imageView.setOnLongClickListener(view -> {
-            showImageActions();
-            return true;
+        TextView instructions = new TextView(this);
+        instructions.setText("添加桌面小组件\\n\\n1. 长按桌面空白处\\n2. 选择「小组件」\\n3. 找到「单向历」并添加\\n\\n图片按北京时间每日更新。点击小组件即可手动刷新。");
+        instructions.setTextColor(Color.rgb(72, 66, 58));
+        instructions.setTextSize(16);
+        instructions.setLineSpacing(dp(4), 1.0f);
+        instructions.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams instructionParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        instructionParams.topMargin = dp(44);
+        root.addView(instructions, instructionParams);
+
+        Button refresh = new Button(this);
+        refresh.setText("刷新今日单向历");
+        refresh.setOnClickListener(view -> {
+            CalendarWidgetProvider.refreshWidgets(this);
+            refresh.setText("已发起刷新");
+            refresh.postDelayed(() -> refresh.setText("刷新今日单向历"), 1600);
+        });
+        LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        buttonParams.topMargin = dp(36);
+        root.addView(refresh, buttonParams);
+
+        Switch hideIcon = new Switch(this);
+        hideIcon.setText("隐藏应用图标");
+        hideIcon.setTextColor(Color.rgb(72, 66, 58));
+        hideIcon.setTextSize(16);
+        hideIcon.setPadding(0, dp(8), 0, dp(8));
+        LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        switchParams.topMargin = dp(20);
+        root.addView(hideIcon, switchParams);
+
+        TextView switchNote = new TextView(this);
+        switchNote.setText("隐藏后仍可使用桌面小组件；再次打开本设置，可点击小组件底部文字。");
+        switchNote.setTextColor(Color.rgb(130, 120, 108));
+        switchNote.setTextSize(12);
+        switchNote.setLineSpacing(dp(2), 1.0f);
+        root.addView(switchNote, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        ComponentName launcherComponent = new ComponentName(this, LAUNCHER_ALIAS);
+        int componentState = getPackageManager().getComponentEnabledSetting(launcherComponent);
+        hideIcon.setChecked(componentState == PackageManager.COMPONENT_ENABLED_STATE_DISABLED);
+        hideIcon.setOnCheckedChangeListener((buttonView, checked) -> {
+            getPackageManager().setComponentEnabledSetting(
+                    launcherComponent,
+                    checked ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                            : PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    PackageManager.DONT_KILL_APP);
+            android.widget.Toast.makeText(this,
+                    checked ? "应用图标已隐藏" : "应用图标已显示",
+                    android.widget.Toast.LENGTH_SHORT).show();
         });
 
+        TextView date = new TextView(this);
+        date.setText("北京时间 " + LocalDate.now(ZoneId.of("Asia/Shanghai"))
+                .format(DateTimeFormatter.ofPattern("yyyy年M月d日", Locale.CHINA)));
+        date.setTextColor(Color.rgb(130, 120, 108));
+        date.setTextSize(12);
+        date.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dateParams.topMargin = dp(24);
+        root.addView(date, dateParams);
+
         setContentView(root);
-        loadImage();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (imageView != null) loadImage();
-    }
-
-    private void loadImage() {
-        cachedImage = new File(getFilesDir(), "single_calendar_latest.jpg");
-        if (!cachedImage.exists()) {
-            imageView.setImageDrawable(null);
-            hint.setText("正在获取今日单向历…");
-            CalendarWidgetProvider.refreshWidgets(this);
-            return;
-        }
-        BitmapFactory.Options bounds = new BitmapFactory.Options();
-        bounds.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(cachedImage.getAbsolutePath(), bounds);
-        int sample = 1;
-        while (bounds.outWidth / sample > 1800 || bounds.outHeight / sample > 3000) sample *= 2;
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = sample;
-        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-        Bitmap bitmap = BitmapFactory.decodeFile(cachedImage.getAbsolutePath(), options);
-        if (bitmap != null) {
-            imageView.setImageBitmap(bitmap);
-            hint.setText("北京时间 " + LocalDate.now(ZoneId.of("Asia/Shanghai"))
-                    .format(DateTimeFormatter.ofPattern("M月d日", Locale.CHINA))
-                    + " · 长按图片保存或分享");
-        } else {
-            hint.setText("图片暂时无法显示");
-        }
-    }
-
-    private void showImageActions() {
-        if (cachedImage == null || !cachedImage.exists()) {
-            Toast.makeText(this, "暂时没有可用的图片", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("单向历图片")
-                .setItems(new String[]{"保存到相册", "分享图片"}, (dialog, which) -> {
-                    if (which == 0) saveToGallery();
-                    else shareImage();
-                })
-                .show();
-    }
-
-    private void saveToGallery() {
-        try {
-            ContentValues values = new ContentValues();
-            values.put(MediaStore.Images.Media.DISPLAY_NAME, "单向历-" +
-                    LocalDate.now(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ofPattern("yyyyMMdd", Locale.ROOT)) + ".jpg");
-            values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/单向历");
-                values.put(MediaStore.Images.Media.IS_PENDING, 1);
-            }
-            Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-            if (uri == null) throw new IllegalStateException("Unable to create media item");
-            try (FileInputStream input = new FileInputStream(cachedImage);
-                 OutputStream output = getContentResolver().openOutputStream(uri)) {
-                if (output == null) throw new IllegalStateException("Unable to open media output");
-                byte[] buffer = new byte[8192];
-                int count;
-                while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ContentValues done = new ContentValues();
-                done.put(MediaStore.Images.Media.IS_PENDING, 0);
-                getContentResolver().update(uri, done, null, null);
-            }
-            Toast.makeText(this, "已保存到相册的「单向历」文件夹", Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Toast.makeText(this, "保存失败，请稍后重试", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void shareImage() {
-        try {
-            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", cachedImage);
-            Intent share = new Intent(Intent.ACTION_SEND);
-            share.setType("image/jpeg");
-            share.putExtra(Intent.EXTRA_STREAM, uri);
-            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(share, "分享单向历"));
-        } catch (Exception e) {
-            Toast.makeText(this, "暂时无法分享图片", Toast.LENGTH_SHORT).show();
-        }
+        CalendarWidgetProvider.refreshWidgets(this);
     }
 
     private int dp(int value) {

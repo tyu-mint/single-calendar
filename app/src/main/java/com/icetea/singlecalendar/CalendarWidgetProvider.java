@@ -71,16 +71,20 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.calendar_widget);
             if (cachedBitmap != null) {
                 views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
-                views.setTextViewText(R.id.widget_footer, today + " · 单向历 · 点击刷新");
+                views.setTextViewText(R.id.widget_footer, today + " · 单向历 · 点击打开设置");
             } else {
-                views.setTextViewText(R.id.widget_footer, "正在加载今日单向历…");
+                views.setTextViewText(R.id.widget_footer, "正在加载今日单向历… · 点击打开设置");
             }
-            PendingIntent click = PendingIntent.getActivity(
+            PendingIntent imageClick = PendingIntent.getActivity(
                     appContext, 1003,
+                    new Intent(appContext, ImageViewerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent settingsClick = PendingIntent.getActivity(
+                    appContext, 1004,
                     new Intent(appContext, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            views.setOnClickPendingIntent(R.id.calendar_image, click);
-            views.setOnClickPendingIntent(R.id.widget_footer, click);
+            views.setOnClickPendingIntent(R.id.calendar_image, imageClick);
+            views.setOnClickPendingIntent(R.id.widget_footer, settingsClick);
             manager.updateAppWidget(id, views);
         }
 
@@ -109,7 +113,6 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 updateFooter(context, "今日图片暂不可用 · 点击重试");
                 return;
             }
-
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try (InputStream input = connection.getInputStream()) {
                 byte[] buffer = new byte[8192];
@@ -127,13 +130,12 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 updateFooter(context, "图片格式异常 · 点击重试");
                 return;
             }
-
             File destination = new File(context.getFilesDir(), CACHE_NAME);
             try (FileOutputStream fileOutput = new FileOutputStream(destination)) {
                 fileOutput.write(bytes);
                 fileOutput.flush();
             }
-            updateAllImages(context, bitmap, date.format(DISPLAY_DATE) + " · 单向历 · 点击刷新");
+            updateAllImages(context, bitmap, date.format(DISPLAY_DATE) + " · 单向历 · 点击打开设置");
         } catch (Exception exception) {
             updateFooter(context, "网络暂不可用 · 显示缓存 · 点击重试");
         } finally {
@@ -147,9 +149,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         bounds.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(file.getAbsolutePath(), bounds);
         int sample = 1;
-        while (bounds.outWidth / sample > 1000 || bounds.outHeight / sample > 1600) {
-            sample *= 2;
-        }
+        while (bounds.outWidth / sample > 1000 || bounds.outHeight / sample > 1600) sample *= 2;
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = sample;
         options.inPreferredConfig = Bitmap.Config.RGB_565;
@@ -161,9 +161,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         bounds.inJustDecodeBounds = true;
         BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
         int sample = 1;
-        while (bounds.outWidth / sample > 1000 || bounds.outHeight / sample > 1600) {
-            sample *= 2;
-        }
+        while (bounds.outWidth / sample > 1000 || bounds.outHeight / sample > 1600) sample *= 2;
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = sample;
         options.inPreferredConfig = Bitmap.Config.RGB_565;
@@ -177,12 +175,16 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
             views.setImageViewBitmap(R.id.calendar_image, bitmap);
             views.setTextViewText(R.id.widget_footer, footer);
-            PendingIntent click = PendingIntent.getActivity(
+            PendingIntent imageClick = PendingIntent.getActivity(
                     context, 1003,
+                    new Intent(context, ImageViewerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent settingsClick = PendingIntent.getActivity(
+                    context, 1004,
                     new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            views.setOnClickPendingIntent(R.id.calendar_image, click);
-            views.setOnClickPendingIntent(R.id.widget_footer, click);
+            views.setOnClickPendingIntent(R.id.calendar_image, imageClick);
+            views.setOnClickPendingIntent(R.id.widget_footer, settingsClick);
             manager.updateAppWidget(id, views);
         }
     }
@@ -193,16 +195,18 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         Bitmap cachedBitmap = decodeBitmap(new File(context.getFilesDir(), CACHE_NAME));
         for (int id : manager.getAppWidgetIds(component)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
-            if (cachedBitmap != null) {
-                views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
-            }
-            views.setTextViewText(R.id.widget_footer, footer);
-            PendingIntent click = PendingIntent.getActivity(
+            if (cachedBitmap != null) views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
+            views.setTextViewText(R.id.widget_footer, footer + " · 点击打开设置");
+            PendingIntent imageClick = PendingIntent.getActivity(
                     context, 1003,
+                    new Intent(context, ImageViewerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent settingsClick = PendingIntent.getActivity(
+                    context, 1004,
                     new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            views.setOnClickPendingIntent(R.id.calendar_image, click);
-            views.setOnClickPendingIntent(R.id.widget_footer, click);
+            views.setOnClickPendingIntent(R.id.calendar_image, imageClick);
+            views.setOnClickPendingIntent(R.id.widget_footer, settingsClick);
             manager.updateAppWidget(id, views);
         }
     }
