@@ -46,7 +46,7 @@ public class ImageViewerActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         boolean dark = isDarkMode();
-        int background = dark ? Color.BLACK : Color.rgb(244, 240, 231);
+        int background = dark ? Color.rgb(35, 36, 41) : Color.rgb(244, 240, 231);
         getWindow().setStatusBarColor(background);
         getWindow().setNavigationBarColor(background);
         getWindow().getDecorView().setSystemUiVisibility(dark ? 0 :

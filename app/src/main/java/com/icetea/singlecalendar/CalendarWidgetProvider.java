@@ -56,7 +56,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             refreshWidgets(context);
         } else if (Intent.ACTION_BOOT_COMPLETED.equals(action)
                 || Intent.ACTION_TIME_CHANGED.equals(action)
-                || Intent.ACTION_TIMEZONE_CHANGED.equals(action)) {
+                || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
+                || Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
             scheduleNextUpdate(context);
             refreshWidgets(context);
         }
@@ -72,9 +73,12 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         File cached = new File(appContext.getFilesDir(), CACHE_NAME);
         Bitmap cachedBitmap = decodeBitmap(cached);
         if (cachedBitmap != null && isDarkMode(appContext)) cachedBitmap = invertedCopy(cachedBitmap);
+        int widgetBackground = isDarkMode(appContext) ? android.graphics.Color.rgb(35, 36, 41) : android.graphics.Color.rgb(244, 240, 231);
         String today = LocalDate.now(BEIJING).format(DISPLAY_DATE);
         for (int id : ids) {
             RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.calendar_widget);
+            views.setInt(R.id.widget_root, "setBackgroundColor", widgetBackground);
+            views.setInt(R.id.calendar_image, "setBackgroundColor", widgetBackground);
             if (cachedBitmap != null) {
                 views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
                 views.setTextViewText(R.id.widget_footer, today + " · 单向历 · 点击打开设置");
@@ -200,6 +204,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         ComponentName component = new ComponentName(context, CalendarWidgetProvider.class);
         for (int id : manager.getAppWidgetIds(component)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
+            int widgetBackground = isDarkMode(context) ? android.graphics.Color.rgb(35, 36, 41) : android.graphics.Color.rgb(244, 240, 231);
+            views.setInt(R.id.widget_root, "setBackgroundColor", widgetBackground);
+            views.setInt(R.id.calendar_image, "setBackgroundColor", widgetBackground);
             views.setImageViewBitmap(R.id.calendar_image, bitmap);
             views.setTextViewText(R.id.widget_footer, footer);
             PendingIntent imageClick = PendingIntent.getActivity(
@@ -223,6 +230,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         if (cachedBitmap != null && isDarkMode(context)) cachedBitmap = invertedCopy(cachedBitmap);
         for (int id : manager.getAppWidgetIds(component)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
+            int widgetBackground = isDarkMode(context) ? android.graphics.Color.rgb(35, 36, 41) : android.graphics.Color.rgb(244, 240, 231);
+            views.setInt(R.id.widget_root, "setBackgroundColor", widgetBackground);
+            views.setInt(R.id.calendar_image, "setBackgroundColor", widgetBackground);
             if (cachedBitmap != null) views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
             views.setTextViewText(R.id.widget_footer, footer + " · 点击打开设置");
             PendingIntent imageClick = PendingIntent.getActivity(
