@@ -195,6 +195,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     private static void updateAllImages(Context context, Bitmap bitmap, String footer) {
+        if (isDarkMode(context)) bitmap = invertedCopy(bitmap);
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         ComponentName component = new ComponentName(context, CalendarWidgetProvider.class);
         for (int id : manager.getAppWidgetIds(component)) {
