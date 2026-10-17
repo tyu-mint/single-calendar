@@ -9,9 +9,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 
@@ -24,19 +26,23 @@ public class MainActivity extends Activity {
         boolean dark = (getResources().getConfiguration().uiMode
                 & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
                 == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-        int background = dark ? Color.BLACK : Color.rgb(244, 240, 231);
+        int background = dark ? Color.rgb(35, 36, 41) : Color.rgb(244, 240, 231);
         int foreground = dark ? Color.WHITE : Color.rgb(49, 44, 38);
         int secondary = dark ? Color.LTGRAY : Color.rgb(102, 95, 85);
         getWindow().setStatusBarColor(background);
         getWindow().setNavigationBarColor(background);
         getWindow().getDecorView().setSystemUiVisibility(dark ? 0 :
-                android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-                        | android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                        | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(background);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(28), dp(52), dp(28), dp(28));
+        root.setPadding(dp(28), dp(36), dp(28), dp(28));
         root.setBackgroundColor(background);
 
         TextView title = new TextView(this);
@@ -66,7 +72,7 @@ public class MainActivity extends Activity {
         instructions.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams instructionParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        instructionParams.topMargin = dp(44);
+        instructionParams.topMargin = dp(36);
         root.addView(instructions, instructionParams);
 
         Button refresh = new Button(this);
@@ -78,7 +84,7 @@ public class MainActivity extends Activity {
         });
         LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        buttonParams.topMargin = dp(36);
+        buttonParams.topMargin = dp(28);
         root.addView(refresh, buttonParams);
 
         Switch hideIcon = new Switch(this);
@@ -88,7 +94,7 @@ public class MainActivity extends Activity {
         hideIcon.setPadding(0, dp(8), 0, dp(8));
         LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        switchParams.topMargin = dp(20);
+        switchParams.topMargin = dp(16);
         root.addView(hideIcon, switchParams);
 
         TextView switchNote = new TextView(this);
@@ -124,7 +130,9 @@ public class MainActivity extends Activity {
         uninstallParams.topMargin = dp(12);
         root.addView(uninstall, uninstallParams);
 
-        setContentView(root);
+        scrollView.addView(root, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        setContentView(scrollView);
         CalendarWidgetProvider.refreshWidgets(this);
     }
 
