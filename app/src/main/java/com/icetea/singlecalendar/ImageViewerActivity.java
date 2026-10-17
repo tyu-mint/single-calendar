@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -91,9 +92,6 @@ public class ImageViewerActivity extends Activity {
             CalendarWidgetProvider.refreshWidgets(this);
             return;
         }
-        BitmapFactory.Options bounds = new BitmapFactory.Options();
-        bounds.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(cachedImage.getAbsolutePath(), bounds);
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         Bitmap bitmap = BitmapFactory.decodeFile(cachedImage.getAbsolutePath(), options);
@@ -141,9 +139,16 @@ public class ImageViewerActivity extends Activity {
         }
         new AlertDialog.Builder(this)
                 .setTitle("单向历图片")
-                .setItems(new String[]{"保存到相册", "分享图片"}, (dialog, which) -> {
-                    if (which == 0) saveToGallery();
-                    else shareImage();
+                .setItems(new String[]{"保存到相册", "分享图片", "删除应用"}, (dialog, which) -> {
+                    if (which == 0) {
+                        saveToGallery();
+                    } else if (which == 1) {
+                        shareImage();
+                    } else if (which == 2) {
+                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:" + getPackageName()));
+                        startActivity(intent);
+                    }
                 }).show();
     }
 
