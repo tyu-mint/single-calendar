@@ -1,13 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="#232429">
-    <ImageView android:id="@+id/calendar_image" android:layout_width="match_parent" android:layout_height="match_parent"
-        android:contentDescription="@string/widget_image_description" android:scaleType="fitCenter"
-        android:background="#232429" android:visibility="gone" />
-    <ImageView android:id="@+id/calendar_image_dark" android:layout_width="match_parent" android:layout_height="match_parent"
-        android:contentDescription="@string/widget_image_description" android:scaleType="fitCenter"
-        android:background="#232429" android:visibility="visible" />
-    <TextView android:id="@+id/widget_footer" android:layout_width="1dp" android:layout_height="1dp"
-        android:visibility="gone" android:text="@string/widget_loading" />
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent">
+    <ImageView
+        android:id="@+id/calendar_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/widget_image_description"
+        android:scaleType="fitCenter"
+        android:background="@android:color/transparent"
+        android:visibility="gone" />
+    <ImageView
+        android:id="@+id/calendar_image_dark"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/widget_image_description"
+        android:scaleType="fitCenter"
+        android:background="@android:color/transparent"
+        android:visibility="visible" />
+    <TextView
+        android:id="@+id/widget_footer"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone"
+        android:text="@string/widget_loading" />
 </FrameLayout>
