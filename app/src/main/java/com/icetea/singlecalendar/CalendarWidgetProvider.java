@@ -32,6 +32,9 @@ import java.util.Locale;
 public class CalendarWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_REFRESH = "com.icetea.singlecalendar.REFRESH";
     public static final String ACTION_DAILY_UPDATE = "com.icetea.singlecalendar.DAILY_UPDATE";
+    public static final String ACTION_THEME_CHECK = "com.icetea.singlecalendar.THEME_CHECK";
+    private static final String PREFS = "widget_theme_state";
+    private static final String PREF_DARK = "last_dark_mode";
     private static final ZoneId BEIJING = ZoneId.of("Asia/Shanghai");
     private static final String CACHE_NAME = "single_calendar_latest.jpg";
     private static final DateTimeFormatter YEAR = DateTimeFormatter.ofPattern("yyyy", Locale.ROOT);
@@ -41,6 +44,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         scheduleNextUpdate(context);
+        scheduleThemeCheck(context);
+        rememberCurrentTheme(context);
         refreshWidgets(context);
     }
 
@@ -54,13 +59,39 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         } else if (ACTION_DAILY_UPDATE.equals(action)) {
             scheduleNextUpdate(context);
             refreshWidgets(context);
+        } else if (ACTION_THEME_CHECK.equals(action)) {
+            boolean dark = isDarkMode(context);
+            boolean previous = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .getBoolean(PREF_DARK, dark);
+            if (dark != previous) {
+                rememberCurrentTheme(context);
+                refreshWidgets(context);
+            }
         } else if (Intent.ACTION_BOOT_COMPLETED.equals(action)
                 || Intent.ACTION_TIME_CHANGED.equals(action)
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
                 || Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
             scheduleNextUpdate(context);
+            scheduleThemeCheck(context);
+            rememberCurrentTheme(context);
             refreshWidgets(context);
         }
+    }
+
+    private static void rememberCurrentTheme(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean(PREF_DARK, isDarkMode(context)).apply();
+    }
+
+    private static void scheduleThemeCheck(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) return;
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context, 1002,
+                new Intent(context, CalendarWidgetProvider.class).setAction(ACTION_THEME_CHECK),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        alarmManager.setInexactRepeating(AlarmManager.RTC, System.currentTimeMillis() + 60_000L,
+                60_000L, pendingIntent);
     }
 
     public static void refreshWidgets(Context context) {
