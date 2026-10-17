@@ -37,6 +37,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     private static final String PREF_DARK = "last_dark_mode";
     private static final ZoneId BEIJING = ZoneId.of("Asia/Shanghai");
     private static final String CACHE_NAME = "single_calendar_latest.jpg";
+    private static final String CACHE_DARK_NAME = "single_calendar_latest_dark.jpg";
     private static final DateTimeFormatter YEAR = DateTimeFormatter.ofPattern("yyyy", Locale.ROOT);
     private static final DateTimeFormatter MONTH_DAY = DateTimeFormatter.ofPattern("MMdd", Locale.ROOT);
     private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("M月d日", Locale.CHINA);
@@ -102,16 +103,16 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         if (ids == null || ids.length == 0) return;
 
         File cached = new File(appContext.getFilesDir(), CACHE_NAME);
+        File cachedDark = new File(appContext.getFilesDir(), CACHE_DARK_NAME);
         Bitmap cachedBitmap = decodeBitmap(cached);
-        if (cachedBitmap != null && isDarkMode(appContext)) cachedBitmap = invertedCopy(cachedBitmap);
-        int widgetBackground = isDarkMode(appContext) ? android.graphics.Color.rgb(35, 36, 41) : android.graphics.Color.rgb(244, 240, 231);
+        Bitmap cachedDarkBitmap = decodeBitmap(cachedDark);
+        if (cachedBitmap != null && cachedDarkBitmap == null) cachedDarkBitmap = invertedCopy(cachedBitmap);
         String today = LocalDate.now(BEIJING).format(DISPLAY_DATE);
         for (int id : ids) {
             RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.calendar_widget);
-            views.setInt(R.id.widget_root, "setBackgroundColor", widgetBackground);
-            views.setInt(R.id.calendar_image, "setBackgroundColor", widgetBackground);
             if (cachedBitmap != null) {
                 views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
+                if (cachedDarkBitmap != null) views.setImageViewBitmap(R.id.calendar_image_dark, cachedDarkBitmap);
                 views.setTextViewText(R.id.widget_footer, today + " · 单向历 · 点击打开设置");
             } else {
                 views.setTextViewText(R.id.widget_footer, "正在加载今日单向历… · 点击打开设置");
@@ -176,7 +177,15 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 fileOutput.write(bytes);
                 fileOutput.flush();
             }
-            updateAllImages(context, bitmap, date.format(DISPLAY_DATE) + " · 单向历 · 点击打开设置");
+            Bitmap darkBitmap = invertedCopy(bitmap);
+            File darkDestination = new File(context.getFilesDir(), CACHE_DARK_NAME);
+            try (FileOutputStream darkOutput = new FileOutputStream(darkDestination)) {
+                if (!darkBitmap.compress(Bitmap.CompressFormat.JPEG, 95, darkOutput)) {
+                    throw new IllegalStateException("Unable to save dark image");
+                }
+                darkOutput.flush();
+            }
+            updateAllImages(context, bitmap, darkBitmap, date.format(DISPLAY_DATE) + " · 单向历 · 点击打开设置");
         } catch (Exception exception) {
             updateFooter(context, "网络暂不可用 · 显示缓存 · 点击重试");
         } finally {
@@ -229,16 +238,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
     }
 
-    private static void updateAllImages(Context context, Bitmap bitmap, String footer) {
-        if (isDarkMode(context)) bitmap = invertedCopy(bitmap);
+    private static void updateAllImages(Context context, Bitmap lightBitmap, Bitmap darkBitmap, String footer) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         ComponentName component = new ComponentName(context, CalendarWidgetProvider.class);
         for (int id : manager.getAppWidgetIds(component)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
-            int widgetBackground = isDarkMode(context) ? android.graphics.Color.rgb(35, 36, 41) : android.graphics.Color.rgb(244, 240, 231);
-            views.setInt(R.id.widget_root, "setBackgroundColor", widgetBackground);
-            views.setInt(R.id.calendar_image, "setBackgroundColor", widgetBackground);
-            views.setImageViewBitmap(R.id.calendar_image, bitmap);
+            views.setImageViewBitmap(R.id.calendar_image, lightBitmap);
+            views.setImageViewBitmap(R.id.calendar_image_dark, darkBitmap);
             views.setTextViewText(R.id.widget_footer, footer);
             PendingIntent imageClick = PendingIntent.getActivity(
                     context, 1003,
@@ -258,13 +264,12 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         ComponentName component = new ComponentName(context, CalendarWidgetProvider.class);
         Bitmap cachedBitmap = decodeBitmap(new File(context.getFilesDir(), CACHE_NAME));
-        if (cachedBitmap != null && isDarkMode(context)) cachedBitmap = invertedCopy(cachedBitmap);
+        Bitmap cachedDarkBitmap = decodeBitmap(new File(context.getFilesDir(), CACHE_DARK_NAME));
+        if (cachedBitmap != null && cachedDarkBitmap == null) cachedDarkBitmap = invertedCopy(cachedBitmap);
         for (int id : manager.getAppWidgetIds(component)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
-            int widgetBackground = isDarkMode(context) ? android.graphics.Color.rgb(35, 36, 41) : android.graphics.Color.rgb(244, 240, 231);
-            views.setInt(R.id.widget_root, "setBackgroundColor", widgetBackground);
-            views.setInt(R.id.calendar_image, "setBackgroundColor", widgetBackground);
             if (cachedBitmap != null) views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
+            if (cachedDarkBitmap != null) views.setImageViewBitmap(R.id.calendar_image_dark, cachedDarkBitmap);
             views.setTextViewText(R.id.widget_footer, footer + " · 点击打开设置");
             PendingIntent imageClick = PendingIntent.getActivity(
                     context, 1003,
