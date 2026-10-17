@@ -2,12 +2,9 @@ package com.icetea.singlecalendar;
 
 import android.app.Activity;
 import android.content.ComponentName;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -117,18 +114,6 @@ public class MainActivity extends Activity {
                     checked ? "应用图标已隐藏" : "应用图标已显示",
                     android.widget.Toast.LENGTH_SHORT).show();
         });
-
-        Button uninstall = new Button(this);
-        uninstall.setText("删除应用");
-        uninstall.setOnClickListener(view -> {
-            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:" + getPackageName()));
-            startActivity(intent);
-        });
-        LinearLayout.LayoutParams uninstallParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        uninstallParams.topMargin = dp(12);
-        root.addView(uninstall, uninstallParams);
 
         scrollView.addView(root, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
