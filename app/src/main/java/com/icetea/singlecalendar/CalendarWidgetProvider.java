@@ -126,6 +126,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                     new Intent(appContext, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.calendar_image, imageClick);
+            views.setOnClickPendingIntent(R.id.calendar_image_dark, imageClick);
             views.setOnClickPendingIntent(R.id.widget_footer, settingsClick);
             manager.updateAppWidget(id, views);
         }
@@ -255,6 +256,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                     new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.calendar_image, imageClick);
+            views.setOnClickPendingIntent(R.id.calendar_image_dark, imageClick);
             views.setOnClickPendingIntent(R.id.widget_footer, settingsClick);
             manager.updateAppWidget(id, views);
         }
@@ -280,6 +282,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                     new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.calendar_image, imageClick);
+            views.setOnClickPendingIntent(R.id.calendar_image_dark, imageClick);
             views.setOnClickPendingIntent(R.id.widget_footer, settingsClick);
             manager.updateAppWidget(id, views);
         }
