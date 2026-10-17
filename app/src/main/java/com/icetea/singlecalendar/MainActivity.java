@@ -57,7 +57,7 @@ public class MainActivity extends Activity {
         root.addView(subtitle, subtitleParams);
 
         TextView instructions = new TextView(this);
-        instructions.setText("添加桌面小组件\\n\\n1. 长按桌面空白处\\n2. 选择「小组件」\\n3. 找到「单向历」并添加\\n\\n图片按北京时间每日更新。点击小组件即可手动刷新。");
+        instructions.setText("添加桌面小组件\n\n1. 长按桌面空白处\n2. 选择「小组件」\n3. 找到「单向历」并添加\n\n图片按北京时间每日更新。点击小组件即可手动刷新。");
         instructions.setTextColor(Color.rgb(72, 66, 58));
         instructions.setTextSize(16);
         instructions.setLineSpacing(dp(4), 1.0f);
