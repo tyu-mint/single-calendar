@@ -7,6 +7,11 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.content.res.Configuration;
+import android.os.Handler;
+import android.os.Looper;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -34,26 +39,30 @@ public class ImageViewerActivity extends Activity {
     private ImageView imageView;
     private TextView hint;
     private File cachedImage;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable hideHint = () -> { if (hint != null) hint.setVisibility(View.GONE); };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(Color.rgb(244, 240, 231));
-        getWindow().setNavigationBarColor(Color.rgb(244, 240, 231));
-        getWindow().getDecorView().setSystemUiVisibility(
+        boolean dark = isDarkMode();
+        int background = dark ? Color.BLACK : Color.rgb(244, 240, 231);
+        getWindow().setStatusBarColor(background);
+        getWindow().setNavigationBarColor(background);
+        getWindow().getDecorView().setSystemUiVisibility(dark ? 0 :
                 View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.rgb(244, 240, 231));
+        root.setBackgroundColor(background);
         imageView = new ImageView(this);
-        imageView.setBackgroundColor(Color.rgb(244, 240, 231));
+        imageView.setBackgroundColor(background);
         imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         imageView.setContentDescription("今日单向历大图");
         root.addView(imageView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         hint = new TextView(this);
-        hint.setTextColor(Color.rgb(102, 95, 85));
+        hint.setTextColor(dark ? Color.WHITE : Color.rgb(102, 95, 85));
         hint.setTextSize(15);
         hint.setGravity(Gravity.CENTER);
         hint.setPadding(dp(24), dp(12), dp(24), dp(12));
@@ -85,20 +94,44 @@ public class ImageViewerActivity extends Activity {
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(cachedImage.getAbsolutePath(), bounds);
-        int sample = 1;
-        while (bounds.outWidth / sample > 1800 || bounds.outHeight / sample > 3000) sample *= 2;
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = sample;
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         Bitmap bitmap = BitmapFactory.decodeFile(cachedImage.getAbsolutePath(), options);
         if (bitmap != null) {
-            imageView.setImageBitmap(bitmap);
-            hint.setText("北京时间 " + LocalDate.now(ZoneId.of("Asia/Shanghai"))
-                    .format(DateTimeFormatter.ofPattern("M月d日", Locale.CHINA))
-                    + " · 长按图片保存或分享");
+            imageView.setImageBitmap(isDarkMode() ? invertedCopy(bitmap) : bitmap);
+            hint.setText("长按图片显示更多功能");
+            hint.setVisibility(View.VISIBLE);
+            handler.removeCallbacks(hideHint);
+            handler.postDelayed(hideHint, 2000);
         } else {
             hint.setText("图片暂时无法显示");
         }
+    }
+
+    private boolean isDarkMode() {
+        return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private Bitmap invertedCopy(Bitmap source) {
+        Bitmap copy = source.copy(Bitmap.Config.ARGB_8888, true);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(copy);
+        android.graphics.Paint paint = new android.graphics.Paint();
+        ColorMatrix matrix = new ColorMatrix(new float[]{
+                -1, 0, 0, 0, 255,
+                0, -1, 0, 0, 255,
+                0, 0, -1, 0, 255,
+                0, 0, 0, 1, 0
+        });
+        paint.setColorFilter(new ColorMatrixColorFilter(matrix));
+        canvas.drawBitmap(source, 0, 0, paint);
+        return copy;
+    }
+
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacks(hideHint);
+        super.onDestroy();
     }
 
     private void showImageActions() {

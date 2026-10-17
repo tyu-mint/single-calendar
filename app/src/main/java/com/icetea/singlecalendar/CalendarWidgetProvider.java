@@ -9,6 +9,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.widget.RemoteViews;
 
@@ -66,6 +71,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
         File cached = new File(appContext.getFilesDir(), CACHE_NAME);
         Bitmap cachedBitmap = decodeBitmap(cached);
+        if (cachedBitmap != null && isDarkMode(appContext)) cachedBitmap = invertedCopy(cachedBitmap);
         String today = LocalDate.now(BEIJING).format(DISPLAY_DATE);
         for (int id : ids) {
             RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.calendar_widget);
@@ -143,6 +149,26 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    private static boolean isDarkMode(Context context) {
+        return (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private static Bitmap invertedCopy(Bitmap source) {
+        Bitmap copy = source.copy(Bitmap.Config.ARGB_8888, true);
+        Canvas canvas = new Canvas(copy);
+        Paint paint = new Paint();
+        ColorMatrix matrix = new ColorMatrix(new float[]{
+                -1, 0, 0, 0, 255,
+                0, -1, 0, 0, 255,
+                0, 0, -1, 0, 255,
+                0, 0, 0, 1, 0
+        });
+        paint.setColorFilter(new ColorMatrixColorFilter(matrix));
+        canvas.drawBitmap(source, 0, 0, paint);
+        return copy;
+    }
+
     private static Bitmap decodeBitmap(File file) {
         if (!file.exists()) return null;
         BitmapFactory.Options bounds = new BitmapFactory.Options();
@@ -193,6 +219,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         ComponentName component = new ComponentName(context, CalendarWidgetProvider.class);
         Bitmap cachedBitmap = decodeBitmap(new File(context.getFilesDir(), CACHE_NAME));
+        if (cachedBitmap != null && isDarkMode(context)) cachedBitmap = invertedCopy(cachedBitmap);
         for (int id : manager.getAppWidgetIds(component)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
             if (cachedBitmap != null) views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
