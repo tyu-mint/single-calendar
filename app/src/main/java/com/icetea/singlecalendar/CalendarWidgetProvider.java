@@ -75,9 +75,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             } else {
                 views.setTextViewText(R.id.widget_footer, "正在加载今日单向历…");
             }
-            PendingIntent click = PendingIntent.getBroadcast(
-                    appContext, 1002,
-                    new Intent(appContext, CalendarWidgetProvider.class).setAction(ACTION_REFRESH),
+            PendingIntent click = PendingIntent.getActivity(
+                    appContext, 1003,
+                    new Intent(appContext, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.calendar_image, click);
             views.setOnClickPendingIntent(R.id.widget_footer, click);
@@ -177,9 +177,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);
             views.setImageViewBitmap(R.id.calendar_image, bitmap);
             views.setTextViewText(R.id.widget_footer, footer);
-            PendingIntent click = PendingIntent.getBroadcast(
-                    context, 1002,
-                    new Intent(context, CalendarWidgetProvider.class).setAction(ACTION_REFRESH),
+            PendingIntent click = PendingIntent.getActivity(
+                    context, 1003,
+                    new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.calendar_image, click);
             views.setOnClickPendingIntent(R.id.widget_footer, click);
@@ -197,9 +197,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 views.setImageViewBitmap(R.id.calendar_image, cachedBitmap);
             }
             views.setTextViewText(R.id.widget_footer, footer);
-            PendingIntent click = PendingIntent.getBroadcast(
-                    context, 1002,
-                    new Intent(context, CalendarWidgetProvider.class).setAction(ACTION_REFRESH),
+            PendingIntent click = PendingIntent.getActivity(
+                    context, 1003,
+                    new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.calendar_image, click);
             views.setOnClickPendingIntent(R.id.widget_footer, click);
