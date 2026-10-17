@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">单向历</string>
+    <string name="widget_description">每天自动更新的单向历图片，点击可刷新</string>
+    <string name="widget_image_description">当天的单向历图片</string>
+    <string name="widget_loading">正在加载今日单向历…</string>
+</resources>
