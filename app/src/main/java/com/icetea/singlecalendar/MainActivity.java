@@ -1,7 +1,6 @@
 package com.icetea.singlecalendar;
 
 import android.app.Activity;
-import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -195,17 +194,9 @@ public class MainActivity extends Activity {
             AppWidgetManager manager = getSystemService(AppWidgetManager.class);
             ComponentName provider = new ComponentName(this, CalendarWidgetProvider.class);
             if (manager != null && manager.isRequestPinAppWidgetSupported()) {
-                Intent callbackIntent = new Intent(this, CalendarWidgetProvider.class)
-                        .setAction(CalendarWidgetProvider.ACTION_WIDGET_PINNED);
-                int callbackFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    callbackFlags |= PendingIntent.FLAG_IMMUTABLE;
-                }
-                PendingIntent successCallback = PendingIntent.getBroadcast(
-                        this, 2001, callbackIntent, callbackFlags);
-
                 // Use Android's standard widget-pinning API without launcher-specific extras.
-                boolean requested = manager.requestPinAppWidget(provider, null, successCallback);
+                // No success callback is needed for the current flow.
+                boolean requested = manager.requestPinAppWidget(provider, null, null);
                 if (requested) {
                     Toast.makeText(this, "已发起添加请求", Toast.LENGTH_SHORT).show();
                     return;
