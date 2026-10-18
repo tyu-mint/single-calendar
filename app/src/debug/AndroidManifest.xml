@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        Xiaomi Widget Center only lists widgets that have completed Xiaomi's review flow.
+        For locally sideloaded debug APKs, remove the Xiaomi classification so the widget
+        remains discoverable in the standard Android widgets picker for on-device testing.
+        The release manifest keeps miuiWidget=true for the Xiaomi submission workflow.
+    -->
+    <application>
+        <receiver android:name=".CalendarWidgetProvider">
+            <meta-data
+                android:name="miuiWidget"
+                tools:node="remove" />
+        </receiver>
+    </application>
+</manifest>
