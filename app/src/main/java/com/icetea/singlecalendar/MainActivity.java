@@ -3,10 +3,13 @@ package com.icetea.singlecalendar;
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,6 +22,11 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private static final String LAUNCHER_ALIAS = "com.icetea.singlecalendar.LauncherAlias";
+    private static final String PREFS = "setup_state";
+    private static final String KEY_RETURNED_FROM_APP_INFO = "returned_from_app_info";
+
+    private Button shortcutButton;
+    private boolean openedAppInfoForShortcut = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,7 +73,7 @@ public class MainActivity extends Activity {
         root.addView(subtitle, subtitleParams);
 
         TextView instructions = new TextView(this);
-        instructions.setText("添加桌面小组件\\n\\n1. 长按桌面空白处\\n2. 选择「小组件」\\n3. 找到「单向历」并添加\\n\\n图片按北京时间每日更新。点击小组件即可手动刷新。");
+        instructions.setText("添加桌面小组件\n\n1. 长按桌面空白处\n2. 选择「小组件」\n3. 找到「单向历」并添加\n\n图片按北京时间每日更新。点击小组件即可手动刷新。");
         instructions.setTextColor(dark ? Color.WHITE : Color.rgb(72, 66, 58));
         instructions.setTextSize(16);
         instructions.setLineSpacing(dp(4), 1.0f);
@@ -75,23 +83,23 @@ public class MainActivity extends Activity {
         instructionParams.topMargin = dp(36);
         root.addView(instructions, instructionParams);
 
-        Button addWidget = new Button(this);
-        addWidget.setText("一键添加桌面小组件");
-        addWidget.setOnClickListener(view -> requestAddWidget());
-        LinearLayout.LayoutParams addWidgetParams = new LinearLayout.LayoutParams(
+        shortcutButton = new Button(this);
+        updateShortcutButtonLabel();
+        shortcutButton.setOnClickListener(view -> onShortcutButtonClick());
+        LinearLayout.LayoutParams shortcutButtonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        addWidgetParams.topMargin = dp(24);
-        root.addView(addWidget, addWidgetParams);
+        shortcutButtonParams.topMargin = dp(24);
+        root.addView(shortcutButton, shortcutButtonParams);
 
-        TextView addWidgetNote = new TextView(this);
-        addWidgetNote.setText("系统可能会弹出桌面确认窗口；确认后即可添加。若启动器不支持，会显示手动添加方法。");
-        addWidgetNote.setTextColor(secondary);
-        addWidgetNote.setTextSize(12);
-        addWidgetNote.setLineSpacing(dp(2), 1.0f);
-        LinearLayout.LayoutParams addWidgetNoteParams = new LinearLayout.LayoutParams(
+        TextView shortcutNote = new TextView(this);
+        shortcutNote.setText("先在应用信息中允许「创建桌面快捷方式」等相关权限，返回后即可尝试添加小组件。添加操作仍可能需要桌面确认。");
+        shortcutNote.setTextColor(secondary);
+        shortcutNote.setTextSize(12);
+        shortcutNote.setLineSpacing(dp(2), 1.0f);
+        LinearLayout.LayoutParams shortcutNoteParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        addWidgetNoteParams.topMargin = dp(4);
-        root.addView(addWidgetNote, addWidgetNoteParams);
+        shortcutNoteParams.topMargin = dp(4);
+        root.addView(shortcutNote, shortcutNoteParams);
 
         Button refresh = new Button(this);
         refresh.setText("刷新今日单向历");
@@ -140,6 +148,44 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         setContentView(scrollView);
         CalendarWidgetProvider.refreshWidgets(this);
+
+        if (getPreferences(MODE_PRIVATE).getBoolean(KEY_RETURNED_FROM_APP_INFO, false)) {
+            getPreferences(MODE_PRIVATE).edit().remove(KEY_RETURNED_FROM_APP_INFO).apply();
+            updateShortcutButtonLabel();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (shortcutButton != null && openedAppInfoForShortcut) {
+            openedAppInfoForShortcut = false;
+            updateShortcutButtonLabel();
+        }
+    }
+
+    private void onShortcutButtonClick() {
+        if (!getPreferences(MODE_PRIVATE).getBoolean(KEY_RETURNED_FROM_APP_INFO, false)) {
+            openedAppInfoForShortcut = true;
+            getPreferences(MODE_PRIVATE).edit().putBoolean(KEY_RETURNED_FROM_APP_INFO, true).apply();
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName()));
+            try {
+                startActivity(intent);
+            } catch (Exception e) {
+                openedAppInfoForShortcut = false;
+                getPreferences(MODE_PRIVATE).edit().remove(KEY_RETURNED_FROM_APP_INFO).apply();
+                Toast.makeText(this, "无法打开应用信息，请在系统设置中手动查找「单向历」", Toast.LENGTH_LONG).show();
+            }
+        } else {
+            requestAddWidget();
+        }
+    }
+
+    private void updateShortcutButtonLabel() {
+        if (shortcutButton == null) return;
+        boolean returned = getPreferences(MODE_PRIVATE).getBoolean(KEY_RETURNED_FROM_APP_INFO, false);
+        shortcutButton.setText(returned ? "创建小组件到桌面" : "前往允许创建快捷方式");
     }
 
     private void requestAddWidget() {
