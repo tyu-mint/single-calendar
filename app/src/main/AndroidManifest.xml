@@ -5,6 +5,7 @@
 
     <application
         android:allowBackup="false"
+        android:usesCleartextTraffic="true"
         android:label="单向历"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
