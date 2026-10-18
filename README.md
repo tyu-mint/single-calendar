@@ -74,10 +74,16 @@ gradle --no-daemon assembleRelease
 - 构建成功后会上传 APK Artifact，并创建 GitHub Release，附件名为 `SingleCalendarWidget.apk`。
 - Release 使用固定签名，便于后续版本直接覆盖更新。自动发布需要在仓库 Actions Secrets 中正确配置签名相关密钥。
 
+## 许可证
+
+本项目源码采用 [MIT License](LICENSE) 开源。你可以使用、复制、修改、合并、发布、分发、再许可及销售软件副本，但需要在副本或重要部分中保留原版权声明和许可证文本。软件按“现状”提供，不附带明示或默示担保。
+
+MIT 许可证仅适用于本项目作者拥有版权的代码及相关文件；每日单向历图片由单向空间提供，图片版权及使用权限不因本项目开源而改变。第三方依赖也各自遵循其原有许可证。
+
 ## 项目信息
 
 - 应用名称：单向历
 - 包名：`com.icetea.singlecalendar`
 - 最低 Android 版本：Android 6.0（API 23）
 - 主要实现：Java + Android App Widget
-- 许可证：当前仓库未单独声明许可证。
+- 开源许可证：[MIT](LICENSE)
