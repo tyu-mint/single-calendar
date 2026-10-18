@@ -43,7 +43,7 @@ jobs:
       - name: Upload preview APK
         uses: actions/upload-artifact@v4
         with:
-          name: SingleCalendarWidget-preview-${{ github.ref_name }}
+          name: SingleCalendarWidget-preview-${{ github.run_number }}
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
 
