@@ -82,10 +82,10 @@ gradle --no-daemon assembleRelease
 
 仓库配置了 GitHub Actions：
 
-- 推送到 `main` 分支且修改 `app/**`、Gradle 配置或构建工作流时，自动构建签名 Release APK。
-- 也可以在 GitHub Actions 页面手动运行工作流。
-- 构建成功后会上传 APK Artifact，并创建 GitHub Release，附件名为 `SingleCalendarWidget.apk`。
-- Release 使用固定签名，便于后续版本直接覆盖更新。自动发布需要在仓库 Actions Secrets 中正确配置签名相关密钥。
+- 推送到 `feature/**` 分支并修改应用或构建文件时，自动构建 Debug 预览 APK，供安装测试；预览包使用独立的 `com.icetea.singlecalendar.preview` 包名，可与正式版并存。
+- 推送到 `main` 分支且修改 `app/**`、Gradle 配置或构建工作流时，才会构建签名 Release APK 并发布 GitHub Release。
+- 预览 APK 和正式 APK 都会作为 GitHub Actions Artifact 上传；预览产物保留 14 天，正式产物保留 30 天。
+- 正式 Release 使用固定签名，便于后续版本直接覆盖更新。自动发布需要在仓库 Actions Secrets 中正确配置签名相关密钥。
 
 ## 许可证
 
