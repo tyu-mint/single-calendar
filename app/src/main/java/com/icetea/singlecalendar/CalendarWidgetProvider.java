@@ -141,7 +141,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         LocalDate date = LocalDate.now(BEIJING);
         String year = date.format(YEAR);
         String monthDay = date.format(MONTH_DAY);
-        String imageUrl = "https://img.owspace.com/Public/uploads/Download/" + year + "/" + monthDay + ".jpg";
+        String imageUrl = "http://img.owspace.com/Public/uploads/Download/" + year + "/" + monthDay + ".jpg";
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(imageUrl).openConnection();
