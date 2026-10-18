@@ -2,14 +2,13 @@ package com.icetea.singlecalendar;
 
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
-import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
@@ -194,13 +193,19 @@ public class MainActivity extends Activity {
             AppWidgetManager manager = getSystemService(AppWidgetManager.class);
             ComponentName provider = new ComponentName(this, CalendarWidgetProvider.class);
             if (manager != null && manager.isRequestPinAppWidgetSupported()) {
-                Bundle extras = new Bundle();
-                // Xiaomi/HyperOS launchers use these extras to open their widget detail flow.
-                extras.putString("addType", "appWidgetDetail");
-                extras.putString("widgetName", getPackageName() + "/" + provider.getClassName());
-                boolean requested = manager.requestPinAppWidget(provider, extras, null);
+                Intent callbackIntent = new Intent(this, CalendarWidgetProvider.class)
+                        .setAction(CalendarWidgetProvider.ACTION_WIDGET_PINNED);
+                int callbackFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    callbackFlags |= PendingIntent.FLAG_IMMUTABLE;
+                }
+                PendingIntent successCallback = PendingIntent.getBroadcast(
+                        this, 2001, callbackIntent, callbackFlags);
+
+                // Match Tonkeeper: standard request, no Xiaomi-specific extras, with success callback.
+                boolean requested = manager.requestPinAppWidget(provider, null, successCallback);
                 if (requested) {
-                    Toast.makeText(this, "已请求添加，请在桌面确认", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "已发起添加请求", Toast.LENGTH_SHORT).show();
                     return;
                 }
             }
