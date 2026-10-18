@@ -1,26 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="857" android:viewportHeight="857">
-    <path android:fillColor="#FF454545" android:pathData="M0,207 L240,207 L240,0 L251,0 L251,207 L578,207 L578,857 L566,857 L566,219 L251,219 C251,440 188,640 0,837 L0,820 C170,650 238,445 238,219 L0,219 Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M415,755 396,760 398,766Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M352,730 359,741 361,751 364,753 366,751 366,744 358,733Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M329,729 322,727 319,740 311,755 319,747Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M505,716 503,717 498,738 504,728 507,727 505,725 508,718Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M421,715 420,766 426,766 426,717Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M442,714 440,716 441,731 439,732 441,734 440,766 453,766 449,762 447,765 445,764 445,719 447,717Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M409,713 406,713 400,728 396,731 398,735 406,732 408,734 397,746 398,751 414,745 404,746 402,744 417,728 413,724 408,731 400,730 411,715Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M343,713 337,713 337,761 335,763 331,763 334,768 340,767 342,764Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M515,712 515,725 513,727 515,729 515,769 519,768 519,746 521,745 519,743 520,713Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M493,712 481,741 486,735 488,736 488,769 492,767 491,726 498,714Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M494,544 478,534 469,544 441,544 440,523 443,519 425,513 425,543 423,545 400,545 425,546 424,576 417,600 410,614 403,623 388,637 369,649 401,630 422,609 436,580 440,558 440,546 442,544 471,545 469,617 464,624 452,626 457,631 458,641 461,641 474,634 482,626 486,617 488,553Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M473,502 395,503 379,495 380,548 376,585 370,601 361,617 338,641 353,631 373,612 388,588 394,563 394,504 421,502Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M467,360 451,352 444,361 440,361 445,363 445,403 413,404 411,402 411,364 413,362 435,362 410,362 399,354 398,423 400,424 407,416 412,404 464,404 462,367Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M505,330 487,321 480,331 378,332 364,324 364,459 376,446 379,435 378,335 380,333 460,331 481,332 483,439 478,443 466,443 472,447 475,460 490,452 497,444 500,436 499,337Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M438,307 428,296 407,315 389,326 425,314Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M426,171 426,190 424,192 394,193 392,191 393,170 423,168Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M441,169 475,167 477,169 477,189 475,191 443,192 441,190Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M498,143 483,136 475,144 461,144 476,145 476,165 474,167 443,168 441,166 441,146 457,145 406,146 424,146 426,148 425,167 421,169 393,169 392,148 397,147 392,147 377,139 377,206 380,207 390,200 394,193 423,192 426,195 426,220 420,223 346,225 424,223 426,225 427,268 428,270 431,270 436,265 440,256 441,224 443,222 518,220 506,212 493,220 443,222 441,220 442,192 490,191 493,188 492,150Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M413,90 405,98 403,98 406,99 407,116 403,118 405,119 420,118 419,104 424,99Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M366,89 366,131 373,134 378,130 383,119 399,119 381,118 381,100 400,99 381,99Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M494,88 484,96 466,96 486,97 486,114 482,115 500,115 500,101 504,97Z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M443,89 445,130 450,131 455,128 459,117 480,116 459,116 458,98 464,97 460,97 446,88Z"/>
-</vector>
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_launcher_original"
+    android:gravity="fill" />
