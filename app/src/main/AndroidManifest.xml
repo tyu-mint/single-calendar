@@ -6,6 +6,7 @@
     <application
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
+        android:icon="@mipmap/ic_launcher"
         android:label="单向历小组件"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
@@ -22,6 +23,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="true"
             android:exported="true"
+            android:icon="@mipmap/ic_launcher"
             android:label="单向历小组件">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
