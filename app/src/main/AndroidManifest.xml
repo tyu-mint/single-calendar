@@ -48,6 +48,7 @@
 
         <receiver
             android:name=".CalendarWidgetProvider"
+            android:label="@string/app_name"
             android:process=":widgetProvider"
             android:exported="true">
             <intent-filter>
