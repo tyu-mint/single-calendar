@@ -15,6 +15,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
+    // Stable mainline: keep one-tap widget pin experiments on a separate branch.
     private static final String LAUNCHER_ALIAS = "com.icetea.singlecalendar.LauncherAlias";
 
     @Override
