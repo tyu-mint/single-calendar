@@ -11,6 +11,10 @@
         android:label="单向历小组件"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <!-- Required for Xiaomi / HyperOS Widget integration. Increment when widget features change. -->
+        <meta-data
+            android:name="miuiWidgetVersion"
+            android:value="1" />
         <activity
             android:name=".MainActivity"
             android:exported="true" />
@@ -44,9 +48,12 @@
 
         <receiver
             android:name=".CalendarWidgetProvider"
+            android:process=":widgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <!-- Xiaomi Widget Center sends this when presenting a MIUI / HyperOS widget. -->
+                <action android:name="miui.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.icetea.singlecalendar.REFRESH" />
                 <action android:name="com.icetea.singlecalendar.DAILY_UPDATE" />
                 <action android:name="com.icetea.singlecalendar.THEME_CHECK" />
@@ -55,6 +62,9 @@
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.CONFIGURATION_CHANGED" />
             </intent-filter>
+            <meta-data
+                android:name="miuiWidget"
+                android:value="true" />
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/calendar_widget_info" />
