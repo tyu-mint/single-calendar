@@ -34,6 +34,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_REFRESH = "com.icetea.singlecalendar.REFRESH";
     public static final String ACTION_DAILY_UPDATE = "com.icetea.singlecalendar.DAILY_UPDATE";
     public static final String ACTION_THEME_CHECK = "com.icetea.singlecalendar.THEME_CHECK";
+    public static final String ACTION_WIDGET_PINNED = "com.icetea.singlecalendar.WIDGET_PINNED";
     private static final String PREFS = "widget_theme_state";
     private static final String PREF_DARK = "last_dark_mode";
     private static final ZoneId BEIJING = ZoneId.of("Asia/Shanghai");
@@ -60,6 +61,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             refreshWidgets(context);
         } else if (ACTION_DAILY_UPDATE.equals(action)) {
             scheduleNextUpdate(context);
+            refreshWidgets(context);
+        } else if (ACTION_WIDGET_PINNED.equals(action)) {
             refreshWidgets(context);
         } else if (ACTION_THEME_CHECK.equals(action)) {
             boolean dark = isDarkMode(context);
