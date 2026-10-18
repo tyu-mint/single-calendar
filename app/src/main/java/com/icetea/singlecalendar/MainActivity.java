@@ -1,9 +1,11 @@
 package com.icetea.singlecalendar;
 
 import android.app.Activity;
+import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -13,6 +15,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private static final String LAUNCHER_ALIAS = "com.icetea.singlecalendar.LauncherAlias";
@@ -62,7 +65,7 @@ public class MainActivity extends Activity {
         root.addView(subtitle, subtitleParams);
 
         TextView instructions = new TextView(this);
-        instructions.setText("添加桌面小组件\n\n1. 长按桌面空白处\n2. 选择「小组件」\n3. 找到「单向历」并添加\n\n图片按北京时间每日更新。点击小组件即可手动刷新。");
+        instructions.setText("添加桌面小组件\\n\\n1. 长按桌面空白处\\n2. 选择「小组件」\\n3. 找到「单向历」并添加\\n\\n图片按北京时间每日更新。点击小组件即可手动刷新。");
         instructions.setTextColor(dark ? Color.WHITE : Color.rgb(72, 66, 58));
         instructions.setTextSize(16);
         instructions.setLineSpacing(dp(4), 1.0f);
@@ -71,6 +74,24 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         instructionParams.topMargin = dp(36);
         root.addView(instructions, instructionParams);
+
+        Button addWidget = new Button(this);
+        addWidget.setText("一键添加桌面小组件");
+        addWidget.setOnClickListener(view -> requestAddWidget());
+        LinearLayout.LayoutParams addWidgetParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        addWidgetParams.topMargin = dp(24);
+        root.addView(addWidget, addWidgetParams);
+
+        TextView addWidgetNote = new TextView(this);
+        addWidgetNote.setText("系统可能会弹出桌面确认窗口；确认后即可添加。若启动器不支持，会显示手动添加方法。");
+        addWidgetNote.setTextColor(secondary);
+        addWidgetNote.setTextSize(12);
+        addWidgetNote.setLineSpacing(dp(2), 1.0f);
+        LinearLayout.LayoutParams addWidgetNoteParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        addWidgetNoteParams.topMargin = dp(4);
+        root.addView(addWidgetNote, addWidgetNoteParams);
 
         Button refresh = new Button(this);
         refresh.setText("刷新今日单向历");
@@ -81,7 +102,7 @@ public class MainActivity extends Activity {
         });
         LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        buttonParams.topMargin = dp(28);
+        buttonParams.topMargin = dp(16);
         root.addView(refresh, buttonParams);
 
         Switch hideIcon = new Switch(this);
@@ -110,15 +131,35 @@ public class MainActivity extends Activity {
                     checked ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED
                             : PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                     PackageManager.DONT_KILL_APP);
-            android.widget.Toast.makeText(this,
+            Toast.makeText(this,
                     checked ? "应用图标已隐藏" : "应用图标已显示",
-                    android.widget.Toast.LENGTH_SHORT).show();
+                    Toast.LENGTH_SHORT).show();
         });
 
         scrollView.addView(root, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         setContentView(scrollView);
         CalendarWidgetProvider.refreshWidgets(this);
+    }
+
+    private void requestAddWidget() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AppWidgetManager manager = getSystemService(AppWidgetManager.class);
+            ComponentName provider = new ComponentName(this, CalendarWidgetProvider.class);
+            if (manager != null && manager.isRequestPinAppWidgetSupported()) {
+                boolean requested = manager.requestPinAppWidget(provider, null, null);
+                if (requested) {
+                    Toast.makeText(this, "已请求添加，请在桌面确认", Toast.LENGTH_LONG).show();
+                    return;
+                }
+            }
+        }
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("手动添加桌面小组件")
+                .setMessage("当前桌面启动器不支持应用内一键添加。请返回桌面，长按空白处，打开「小组件」，找到「单向历」并添加。")
+                .setPositiveButton("知道了", null)
+                .show();
     }
 
     private int dp(int value) {
