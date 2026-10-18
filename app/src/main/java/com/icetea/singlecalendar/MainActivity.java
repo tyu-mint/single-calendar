@@ -1,10 +1,16 @@
 package com.icetea.singlecalendar;
 
 import android.app.Activity;
+import android.app.PendingIntent;
+import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,10 +19,15 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
-    // Stable mainline: keep one-tap widget pin experiments on a separate branch.
     private static final String LAUNCHER_ALIAS = "com.icetea.singlecalendar.LauncherAlias";
+    private static final String PREFS = "setup_state";
+    private static final String KEY_RETURNED_FROM_APP_INFO = "returned_from_app_info";
+
+    private Button shortcutButton;
+    private boolean openedAppInfoForShortcut = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +84,24 @@ public class MainActivity extends Activity {
         instructionParams.topMargin = dp(36);
         root.addView(instructions, instructionParams);
 
+        shortcutButton = new Button(this);
+        updateShortcutButtonLabel();
+        shortcutButton.setOnClickListener(view -> onShortcutButtonClick());
+        LinearLayout.LayoutParams shortcutButtonParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        shortcutButtonParams.topMargin = dp(24);
+        root.addView(shortcutButton, shortcutButtonParams);
+
+        TextView shortcutNote = new TextView(this);
+        shortcutNote.setText("首次使用时，请在应用信息中允许「创建桌面快捷方式」。返回后点击按钮即可尝试一键添加；是否能直接添加仍由系统桌面决定。");
+        shortcutNote.setTextColor(secondary);
+        shortcutNote.setTextSize(12);
+        shortcutNote.setLineSpacing(dp(2), 1.0f);
+        LinearLayout.LayoutParams shortcutNoteParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        shortcutNoteParams.topMargin = dp(4);
+        root.addView(shortcutNote, shortcutNoteParams);
+
         Button refresh = new Button(this);
         refresh.setText("刷新今日单向历");
         refresh.setOnClickListener(view -> {
@@ -82,7 +111,7 @@ public class MainActivity extends Activity {
         });
         LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        buttonParams.topMargin = dp(28);
+        buttonParams.topMargin = dp(16);
         root.addView(refresh, buttonParams);
 
         Switch hideIcon = new Switch(this);
@@ -111,15 +140,84 @@ public class MainActivity extends Activity {
                     checked ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED
                             : PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                     PackageManager.DONT_KILL_APP);
-            android.widget.Toast.makeText(this,
+            Toast.makeText(this,
                     checked ? "应用图标已隐藏" : "应用图标已显示",
-                    android.widget.Toast.LENGTH_SHORT).show();
+                    Toast.LENGTH_SHORT).show();
         });
 
         scrollView.addView(root, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         setContentView(scrollView);
         CalendarWidgetProvider.refreshWidgets(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (shortcutButton != null && openedAppInfoForShortcut) {
+            openedAppInfoForShortcut = false;
+            updateShortcutButtonLabel();
+        }
+    }
+
+    private void onShortcutButtonClick() {
+        boolean returned = getPreferences(MODE_PRIVATE)
+                .getBoolean(KEY_RETURNED_FROM_APP_INFO, false);
+        if (!returned) {
+            openedAppInfoForShortcut = true;
+            getPreferences(MODE_PRIVATE).edit()
+                    .putBoolean(KEY_RETURNED_FROM_APP_INFO, true).apply();
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName()));
+            try {
+                startActivity(intent);
+            } catch (Exception e) {
+                openedAppInfoForShortcut = false;
+                getPreferences(MODE_PRIVATE).edit()
+                        .remove(KEY_RETURNED_FROM_APP_INFO).apply();
+                Toast.makeText(this, "无法打开应用信息，请在系统设置中手动查找「单向历」",
+                        Toast.LENGTH_LONG).show();
+            }
+        } else {
+            requestAddWidget();
+        }
+    }
+
+    private void updateShortcutButtonLabel() {
+        if (shortcutButton == null) return;
+        boolean returned = getPreferences(MODE_PRIVATE)
+                .getBoolean(KEY_RETURNED_FROM_APP_INFO, false);
+        shortcutButton.setText(returned ? "一键添加小组件" : "前往允许创建快捷方式");
+    }
+
+    private void requestAddWidget() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AppWidgetManager manager = getSystemService(AppWidgetManager.class);
+            ComponentName provider = new ComponentName(this, CalendarWidgetProvider.class);
+            if (manager != null && manager.isRequestPinAppWidgetSupported()) {
+                Intent callbackIntent = new Intent(this, CalendarWidgetProvider.class)
+                        .setAction(CalendarWidgetProvider.ACTION_WIDGET_PINNED);
+                int callbackFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    callbackFlags |= PendingIntent.FLAG_IMMUTABLE;
+                }
+                PendingIntent successCallback = PendingIntent.getBroadcast(
+                        this, 2001, callbackIntent, callbackFlags);
+
+                // Use Android's standard widget-pinning API without launcher-specific extras.
+                boolean requested = manager.requestPinAppWidget(provider, null, successCallback);
+                if (requested) {
+                    Toast.makeText(this, "已发起添加请求", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        }
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("手动添加桌面小组件")
+                .setMessage("当前桌面启动器不支持应用内一键添加。请返回桌面，长按空白处，打开「小组件」，找到「单向历」并添加。")
+                .setPositiveButton("知道了", null)
+                .show();
     }
 
     private int dp(int value) {
