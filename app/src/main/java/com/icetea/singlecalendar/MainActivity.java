@@ -203,8 +203,11 @@ public class MainActivity extends Activity {
                 PendingIntent successCallback = PendingIntent.getBroadcast(
                         this, 2001, callbackIntent, callbackFlags);
 
-                // Match Tonkeeper: standard request, no Xiaomi-specific extras, with success callback.
-                boolean requested = manager.requestPinAppWidget(provider, null, successCallback);
+                // Keep Xiaomi/HyperOS widget-detail extras while using the standard success callback.
+                Bundle extras = new Bundle();
+                extras.putString("addType", "appWidgetDetail");
+                extras.putString("widgetName", getPackageName() + "/" + provider.getClassName());
+                boolean requested = manager.requestPinAppWidget(provider, extras, successCallback);
                 if (requested) {
                     Toast.makeText(this, "已发起添加请求", Toast.LENGTH_SHORT).show();
                     return;
