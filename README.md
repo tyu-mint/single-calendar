@@ -12,7 +12,20 @@
 - **查看大图**：点击小组件图片进入大图页面，长按图片可保存到相册、分享图片，或进入系统应用信息页卸载应用。
 - **隐藏应用图标**：可以隐藏启动器中的应用图标；小组件仍可使用，之后可通过小组件底部的隐藏点击区域重新打开设置。
 
-## 安装
+## 小米澎湃 OS / MIUI 小部件
+
+此分支已加入小米小部件的代码级适配：
+
+- 在应用清单中声明 `miuiWidget` 和应用级 `miuiWidgetVersion`。
+- 接收小米桌面的 `miui.appwidget.action.APPWIDGET_UPDATE` 展现刷新广播。
+- 将小组件接收器放入 `:widgetProvider` 独立进程。
+- 按小米文档建议，将最小尺寸配置为 4×4（300dp × 250dp），同时保留可调整尺寸的能力。
+
+小米官方说明：[小部件技术规范与系统能力](https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1584)。
+
+**审核说明：** 代码接入后，普通 Android 桌面小组件仍按原生规范工作。要让组件正式收录到澎湃 OS 的「小部件中心」，还需要按小米官方流程提交应用和小组件审核；本项目尚未完成该审核。
+
+## ## 安装
 
 前往 [GitHub Releases](https://github.com/tyu-mint/single-calendar/releases/latest) 下载最新的 `SingleCalendarWidget.apk` 并安装。
 
