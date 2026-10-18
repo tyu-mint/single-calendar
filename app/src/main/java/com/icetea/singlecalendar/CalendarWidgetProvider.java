@@ -34,6 +34,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_REFRESH = "com.icetea.singlecalendar.REFRESH";
     public static final String ACTION_DAILY_UPDATE = "com.icetea.singlecalendar.DAILY_UPDATE";
     public static final String ACTION_THEME_CHECK = "com.icetea.singlecalendar.THEME_CHECK";
+    private static final String ACTION_MIUI_WIDGET_UPDATE = "miui.appwidget.action.APPWIDGET_UPDATE";
     private static final String PREFS = "widget_theme_state";
     private static final String PREF_DARK = "last_dark_mode";
     private static final ZoneId BEIJING = ZoneId.of("Asia/Shanghai");
@@ -56,7 +57,17 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         super.onReceive(context, intent);
         if (intent == null || intent.getAction() == null) return;
         String action = intent.getAction();
-        if (ACTION_REFRESH.equals(action)) {
+        if (ACTION_MIUI_WIDGET_UPDATE.equals(action)) {
+            // HyperOS / MIUI uses a vendor-specific refresh broadcast in addition to Android's
+            // APPWIDGET_UPDATE action. Respect the supplied widget IDs when available.
+            int[] widgetIds = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS);
+            if (widgetIds != null && widgetIds.length > 0) {
+                onUpdate(context, AppWidgetManager.getInstance(context), widgetIds);
+            } else {
+                refreshWidgets(context);
+            }
+            return;
+        } else if (ACTION_REFRESH.equals(action)) {
             refreshWidgets(context);
         } else if (ACTION_DAILY_UPDATE.equals(action)) {
             scheduleNextUpdate(context);
