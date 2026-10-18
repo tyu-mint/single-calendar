@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
@@ -193,7 +194,11 @@ public class MainActivity extends Activity {
             AppWidgetManager manager = getSystemService(AppWidgetManager.class);
             ComponentName provider = new ComponentName(this, CalendarWidgetProvider.class);
             if (manager != null && manager.isRequestPinAppWidgetSupported()) {
-                boolean requested = manager.requestPinAppWidget(provider, null, null);
+                Bundle extras = new Bundle();
+                // Xiaomi/HyperOS launchers use these extras to open their widget detail flow.
+                extras.putString("addType", "appWidgetDetail");
+                extras.putString("widgetName", getPackageName() + "/" + provider.getClassName());
+                boolean requested = manager.requestPinAppWidget(provider, extras, null);
                 if (requested) {
                     Toast.makeText(this, "已请求添加，请在桌面确认", Toast.LENGTH_LONG).show();
                     return;
