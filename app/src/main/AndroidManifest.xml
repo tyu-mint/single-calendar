@@ -6,7 +6,7 @@
     <application
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
-        android:label="单向历"
+        android:label="单向历小组件"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
@@ -22,7 +22,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="true"
             android:exported="true"
-            android:label="单向历">
+            android:label="单向历小组件">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -44,6 +44,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.icetea.singlecalendar.REFRESH" />
                 <action android:name="com.icetea.singlecalendar.REFRESH" />
                 <action android:name="com.icetea.singlecalendar.DAILY_UPDATE" />
                 <action android:name="com.icetea.singlecalendar.THEME_CHECK" />
