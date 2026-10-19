@@ -2,8 +2,11 @@ package com.icetea.singlecalendar;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -37,11 +40,24 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 public class ImageViewerActivity extends Activity {
+    private static final ZoneId BEIJING = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter FILE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd", Locale.ROOT);
+
     private ImageView imageView;
     private TextView hint;
     private File cachedImage;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable hideHint = () -> { if (hint != null) hint.setVisibility(View.GONE); };
+
+    /** 今日图片下载完成后由 Provider 广播，本页收到后自动刷新大图。 */
+    private final BroadcastReceiver imageRefreshedReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (CalendarWidgetProvider.ACTION_IMAGE_REFRESHED.equals(intent.getAction())) {
+                handler.post(ImageViewerActivity.this::loadImage);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,7 +91,12 @@ public class ImageViewerActivity extends Activity {
             return true;
         });
         setContentView(root);
+
+        registerRefreshReceiver();
         loadImage();
+        // 打开大图页即主动触发一次今日更新：若今日图片缺失会立即后台下载，
+        // 下载完成后通过 ACTION_IMAGE_REFRESHED 广播自动刷新本页与桌面小组件。
+        CalendarWidgetProvider.refreshWidgets(this);
     }
 
     @Override
@@ -84,12 +105,22 @@ public class ImageViewerActivity extends Activity {
         if (imageView != null) loadImage();
     }
 
+    private void registerRefreshReceiver() {
+        IntentFilter filter = new IntentFilter(CalendarWidgetProvider.ACTION_IMAGE_REFRESHED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(imageRefreshedReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(imageRefreshedReceiver, filter);
+        }
+    }
+
     private void loadImage() {
-        cachedImage = new File(getFilesDir(), "single_calendar_latest.jpg");
-        if (!cachedImage.exists()) {
+        LocalDate today = LocalDate.now(BEIJING);
+        File todayFile = dailyFile(today);
+        cachedImage = todayFile.exists() ? todayFile : latestCachedBefore(today);
+        if (cachedImage == null || !cachedImage.exists()) {
             imageView.setImageDrawable(null);
             hint.setText("正在获取今日单向历…");
-            CalendarWidgetProvider.refreshWidgets(this);
             return;
         }
         BitmapFactory.Options options = new BitmapFactory.Options();
@@ -97,13 +128,32 @@ public class ImageViewerActivity extends Activity {
         Bitmap bitmap = BitmapFactory.decodeFile(cachedImage.getAbsolutePath(), options);
         if (bitmap != null) {
             imageView.setImageBitmap(isDarkMode() ? invertedCopy(bitmap) : bitmap);
-            hint.setText("长按图片显示更多功能");
-            hint.setVisibility(View.VISIBLE);
-            handler.removeCallbacks(hideHint);
-            handler.postDelayed(hideHint, 2000);
+            if (todayFile.exists()) {
+                hint.setText("长按图片显示更多功能");
+                hint.setVisibility(View.VISIBLE);
+                handler.removeCallbacks(hideHint);
+                handler.postDelayed(hideHint, 2000);
+            } else {
+                // 今日图未就绪，回退展示最近缓存，同时等待后台下载完成自动刷新
+                hint.setText("正在加载今日单向历…");
+                hint.setVisibility(View.VISIBLE);
+            }
         } else {
             hint.setText("图片暂时无法显示");
         }
+    }
+
+    private File dailyFile(LocalDate date) {
+        return new File(new File(getFilesDir(), "daily"),
+                date.format(FILE_DATE) + ".jpg");
+    }
+
+    private File latestCachedBefore(LocalDate today) {
+        for (int i = 1; i <= 7; i++) {
+            File file = dailyFile(today.minusDays(i));
+            if (file.exists()) return file;
+        }
+        return null;
     }
 
     private boolean isDarkMode() {
@@ -129,6 +179,10 @@ public class ImageViewerActivity extends Activity {
     @Override
     protected void onDestroy() {
         handler.removeCallbacks(hideHint);
+        try {
+            unregisterReceiver(imageRefreshedReceiver);
+        } catch (Exception ignored) {
+        }
         super.onDestroy();
     }
 
@@ -156,7 +210,7 @@ public class ImageViewerActivity extends Activity {
         try {
             ContentValues values = new ContentValues();
             values.put(MediaStore.Images.Media.DISPLAY_NAME, "单向历-" +
-                    LocalDate.now(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ofPattern("yyyyMMdd", Locale.ROOT)) + ".jpg");
+                    LocalDate.now(BEIJING).format(DateTimeFormatter.ofPattern("yyyyMMdd", Locale.ROOT)) + ".jpg");
             values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/单向历");

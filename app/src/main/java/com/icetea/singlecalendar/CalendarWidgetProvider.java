@@ -34,14 +34,23 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_REFRESH = "com.icetea.singlecalendar.REFRESH";
     public static final String ACTION_DAILY_UPDATE = "com.icetea.singlecalendar.DAILY_UPDATE";
     public static final String ACTION_THEME_CHECK = "com.icetea.singlecalendar.THEME_CHECK";
+    public static final String ACTION_RETRY = "com.icetea.singlecalendar.RETRY";
+    public static final String ACTION_IMAGE_REFRESHED = "com.icetea.singlecalendar.IMAGE_REFRESHED";
+
     private static final String PREFS = "widget_theme_state";
     private static final String PREF_DARK = "last_dark_mode";
+    private static final String DAILY_DIR = "daily";
+    private static final int PRELOAD_MAX_DAYS = 60;
+    private static final long RETRY_DELAY_MS = 30 * 60 * 1000L;
+
     private static final ZoneId BEIJING = ZoneId.of("Asia/Shanghai");
-    private static final String CACHE_NAME = "single_calendar_latest.jpg";
-    private static final String CACHE_DARK_NAME = "single_calendar_latest_dark.jpg";
+    private static final DateTimeFormatter FILE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd", Locale.ROOT);
     private static final DateTimeFormatter YEAR = DateTimeFormatter.ofPattern("yyyy", Locale.ROOT);
     private static final DateTimeFormatter MONTH_DAY = DateTimeFormatter.ofPattern("MMdd", Locale.ROOT);
     private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("M月d日", Locale.CHINA);
+
+    /** 串行化下载任务：锁内执行，避免并发重复下载同一文件。 */
+    private static final Object DOWNLOAD_LOCK = new Object();
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
@@ -69,6 +78,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 rememberCurrentTheme(context);
                 refreshWidgets(context);
             }
+        } else if (ACTION_RETRY.equals(action)) {
+            refreshWidgets(context);
         } else if (Intent.ACTION_BOOT_COMPLETED.equals(action)
                 || Intent.ACTION_TIME_CHANGED.equals(action)
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
@@ -77,6 +88,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             scheduleThemeCheck(context);
             rememberCurrentTheme(context);
             refreshWidgets(context);
+            preDownloadAvailable(context);
         }
     }
 
@@ -98,26 +110,48 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
 
     public static void refreshWidgets(Context context) {
         Context appContext = context.getApplicationContext();
+
+        // 无论当前是否有小组件，都先确保今日图片存在：
+        // 缓存缺失时后台下载，下载成功后自动刷新小组件并广播给大图页。
+        Thread worker = new Thread(() -> ensureTodayImage(appContext), "SingleCalendarEnsure");
+        worker.setDaemon(true);
+        worker.start();
+
         AppWidgetManager manager = AppWidgetManager.getInstance(appContext);
         ComponentName component = new ComponentName(appContext, CalendarWidgetProvider.class);
         int[] ids = manager.getAppWidgetIds(component);
         if (ids == null || ids.length == 0) return;
 
-        File cached = new File(appContext.getFilesDir(), CACHE_NAME);
-        File cachedDark = new File(appContext.getFilesDir(), CACHE_DARK_NAME);
-        Bitmap cachedBitmap = decodeBitmap(cached);
-        Bitmap cachedDarkBitmap = decodeBitmap(cachedDark);
-        if (cachedBitmap != null && cachedDarkBitmap == null) cachedDarkBitmap = invertedCopy(cachedBitmap);
-        String today = LocalDate.now(BEIJING).format(DISPLAY_DATE);
+        LocalDate today = LocalDate.now(BEIJING);
+        File todayFile = dailyFile(appContext, today, false);
+        File todayDarkFile = dailyFile(appContext, today, true);
+        Bitmap light = decodeBitmap(todayFile);
+        Bitmap dark = decodeBitmap(todayDarkFile);
+        if (light != null && dark == null) {
+            dark = invertedCopy(light);
+            saveBitmap(dark, todayDarkFile);
+        }
+        boolean isToday = light != null;
+        if (light == null) {
+            // 今日未就绪时回退展示最近一天缓存，并提示正在加载今日
+            File fallback = findLatestCachedFile(appContext, today);
+            if (fallback != null) {
+                light = decodeBitmap(fallback);
+                dark = decodeBitmap(new File(fallback.getAbsolutePath().replace(".jpg", "_dark.jpg")));
+                if (light != null && dark == null) dark = invertedCopy(light);
+            }
+        }
+        String footer = isToday
+                ? today.format(DISPLAY_DATE) + " · 单向历 · 点击打开设置"
+                : "正在加载今日单向历… · 点击打开设置";
+
         for (int id : ids) {
             RemoteViews views = new RemoteViews(appContext.getPackageName(), R.layout.calendar_widget);
-            if (cachedBitmap != null) {
-                views.setImageViewBitmap(R.id.calendar_image, roundedCopy(appContext, cachedBitmap));
-                if (cachedDarkBitmap != null) views.setImageViewBitmap(R.id.calendar_image_dark, roundedCopy(appContext, cachedDarkBitmap));
-                views.setTextViewText(R.id.widget_footer, today + " · 单向历 · 点击打开设置");
-            } else {
-                views.setTextViewText(R.id.widget_footer, "正在加载今日单向历… · 点击打开设置");
+            if (light != null) {
+                views.setImageViewBitmap(R.id.calendar_image, roundedCopy(appContext, light));
+                if (dark != null) views.setImageViewBitmap(R.id.calendar_image_dark, roundedCopy(appContext, dark));
             }
+            views.setTextViewText(R.id.widget_footer, footer);
             PendingIntent imageClick = PendingIntent.getActivity(
                     appContext, 1003,
                     new Intent(appContext, ImageViewerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -131,17 +165,89 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             views.setOnClickPendingIntent(R.id.widget_footer, settingsClick);
             manager.updateAppWidget(id, views);
         }
+    }
 
-        Thread worker = new Thread(() -> downloadToday(appContext), "SingleCalendarDownload");
+    /**
+     * 确保今日图片已缓存；缺失则下载并刷新小组件与大图页。
+     * 失败时安排 30 分钟后的自动重试，重试由 ACTION_RETRY 再次进入本方法。
+     */
+    private static void ensureTodayImage(Context context) {
+        synchronized (DOWNLOAD_LOCK) {
+            try {
+                LocalDate today = LocalDate.now(BEIJING);
+                File lightFile = dailyFile(context, today, false);
+                if (lightFile.exists()) {
+                    File darkFile = dailyFile(context, today, true);
+                    if (!darkFile.exists()) {
+                        Bitmap light = decodeBitmap(lightFile);
+                        if (light != null) saveBitmap(invertedCopy(light), darkFile);
+                    }
+                    return;
+                }
+                byte[] bytes = downloadImage(today);
+                if (bytes == null) {
+                    scheduleRetry(context);
+                    updateFooter(context, "今日图片暂不可用 · 稍后自动重试");
+                    return;
+                }
+                Bitmap bitmap = decodeBitmap(bytes);
+                if (bitmap == null) {
+                    scheduleRetry(context);
+                    updateFooter(context, "今日图片暂不可用 · 稍后自动重试");
+                    return;
+                }
+                saveBytes(bytes, lightFile);
+                Bitmap darkBitmap = invertedCopy(bitmap);
+                saveBitmap(darkBitmap, dailyFile(context, today, true));
+                cleanupLegacyCache(context);
+                updateAllImages(context, bitmap, darkBitmap,
+                        today.format(DISPLAY_DATE) + " · 单向历 · 点击打开设置");
+                context.sendBroadcast(new Intent(ACTION_IMAGE_REFRESHED));
+            } finally {
+                // 锁由 synchronized 自动释放
+            }
+        }
+    }
+
+    /**
+     * 滚动预下载：把「服务器已发布、本地未缓存」的日期全部补齐。
+     * 服务器按日期连续发布约未来 3 周；遇到尚未发布的日期（HTTP 非 200）即停止，
+     * 下次打开 App / 开机 / 每日更新时会再次补齐新发布的日期。
+     */
+    public static void preDownloadAvailable(Context context) {
+        Context appContext = context.getApplicationContext();
+        Thread worker = new Thread(() -> {
+            synchronized (DOWNLOAD_LOCK) {
+                try {
+                    LocalDate cursor = LocalDate.now(BEIJING);
+                    for (int i = 0; i < PRELOAD_MAX_DAYS; i++) {
+                        File lightFile = dailyFile(appContext, cursor, false);
+                        if (lightFile.exists()) {
+                            cursor = cursor.plusDays(1);
+                            continue;
+                        }
+                        byte[] bytes = downloadImage(cursor);
+                        if (bytes == null) break; // 服务器尚未发布到该日期
+                        Bitmap bitmap = decodeBitmap(bytes);
+                        if (bitmap == null) break;
+                        saveBytes(bytes, lightFile);
+                        saveBitmap(invertedCopy(bitmap), dailyFile(appContext, cursor, true));
+                        cursor = cursor.plusDays(1);
+                    }
+                    cleanupLegacyCache(appContext);
+                } finally {
+                    // 锁由 synchronized 自动释放
+                }
+            }
+        }, "SingleCalendarPreload");
         worker.setDaemon(true);
         worker.start();
     }
 
-    private static void downloadToday(Context context) {
-        LocalDate date = LocalDate.now(BEIJING);
-        String year = date.format(YEAR);
-        String monthDay = date.format(MONTH_DAY);
-        String imageUrl = "http://img.owspace.com/Public/uploads/Download/" + year + "/" + monthDay + ".jpg";
+    /** 下载指定日期的单向历图片，失败返回 null。 */
+    private static byte[] downloadImage(LocalDate date) {
+        String imageUrl = "http://img.owspace.com/Public/uploads/Download/"
+                + date.format(YEAR) + "/" + date.format(MONTH_DAY) + ".jpg";
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(imageUrl).openConnection();
@@ -153,10 +259,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             connection.setRequestProperty("Accept", "image/avif,image/webp,image/apng,image/*,*/*;q=0.8");
             connection.setRequestProperty("Cache-Control", "no-cache");
             int status = connection.getResponseCode();
-            if (status != HttpURLConnection.HTTP_OK) {
-                updateFooter(context, "今日图片暂不可用 · 点击重试");
-                return;
-            }
+            if (status != HttpURLConnection.HTTP_OK) return null;
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try (InputStream input = connection.getInputStream()) {
                 byte[] buffer = new byte[8192];
@@ -168,30 +271,65 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                     output.write(buffer, 0, count);
                 }
             }
-            byte[] bytes = output.toByteArray();
-            Bitmap bitmap = decodeBitmap(bytes);
-            if (bitmap == null) {
-                updateFooter(context, "图片格式异常 · 点击重试");
-                return;
-            }
-            File destination = new File(context.getFilesDir(), CACHE_NAME);
-            try (FileOutputStream fileOutput = new FileOutputStream(destination)) {
-                fileOutput.write(bytes);
-                fileOutput.flush();
-            }
-            Bitmap darkBitmap = invertedCopy(bitmap);
-            File darkDestination = new File(context.getFilesDir(), CACHE_DARK_NAME);
-            try (FileOutputStream darkOutput = new FileOutputStream(darkDestination)) {
-                if (!darkBitmap.compress(Bitmap.CompressFormat.JPEG, 95, darkOutput)) {
-                    throw new IllegalStateException("Unable to save dark image");
-                }
-                darkOutput.flush();
-            }
-            updateAllImages(context, bitmap, darkBitmap, date.format(DISPLAY_DATE) + " · 单向历 · 点击打开设置");
+            return output.toByteArray();
         } catch (Exception exception) {
-            updateFooter(context, "网络暂不可用 · 显示缓存 · 点击重试");
+            return null;
         } finally {
             if (connection != null) connection.disconnect();
+        }
+    }
+
+    /** 下载失败后安排 30 分钟自动重试（多个失败只会保留最近一个闹钟）。 */
+    private static void scheduleRetry(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) return;
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context, 1005,
+                new Intent(context, CalendarWidgetProvider.class).setAction(ACTION_RETRY),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        long trigger = System.currentTimeMillis() + RETRY_DELAY_MS;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pendingIntent);
+        } else {
+            alarmManager.set(AlarmManager.RTC_WAKEUP, trigger, pendingIntent);
+        }
+    }
+
+    private static File dailyFile(Context context, LocalDate date, boolean dark) {
+        return new File(new File(context.getFilesDir(), DAILY_DIR),
+                date.format(FILE_DATE) + (dark ? "_dark.jpg" : ".jpg"));
+    }
+
+    /** 向前最多找 7 天的缓存，用于今日未就绪时的回退展示。 */
+    private static File findLatestCachedFile(Context context, LocalDate from) {
+        for (int i = 1; i <= 7; i++) {
+            File file = dailyFile(context, from.minusDays(i), false);
+            if (file.exists()) return file;
+        }
+        return null;
+    }
+
+    /** 清理旧版单文件缓存（升级后不再使用）。 */
+    private static void cleanupLegacyCache(Context context) {
+        new File(context.getFilesDir(), "single_calendar_latest.jpg").delete();
+        new File(context.getFilesDir(), "single_calendar_latest_dark.jpg").delete();
+    }
+
+    private static void saveBytes(byte[] bytes, File destination) {
+        try (FileOutputStream fileOutput = new FileOutputStream(destination)) {
+            fileOutput.write(bytes);
+            fileOutput.flush();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void saveBitmap(Bitmap bitmap, File destination) {
+        try (FileOutputStream fileOutput = new FileOutputStream(destination)) {
+            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 95, fileOutput)) {
+                throw new IllegalStateException("Unable to save image");
+            }
+            fileOutput.flush();
+        } catch (Exception ignored) {
         }
     }
 
@@ -278,8 +416,9 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     private static void updateFooter(Context context, String footer) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         ComponentName component = new ComponentName(context, CalendarWidgetProvider.class);
-        Bitmap cachedBitmap = decodeBitmap(new File(context.getFilesDir(), CACHE_NAME));
-        Bitmap cachedDarkBitmap = decodeBitmap(new File(context.getFilesDir(), CACHE_DARK_NAME));
+        File todayFile = dailyFile(context, LocalDate.now(BEIJING), false);
+        Bitmap cachedBitmap = decodeBitmap(todayFile);
+        Bitmap cachedDarkBitmap = decodeBitmap(dailyFile(context, LocalDate.now(BEIJING), true));
         if (cachedBitmap != null && cachedDarkBitmap == null) cachedDarkBitmap = invertedCopy(cachedBitmap);
         for (int id : manager.getAppWidgetIds(component)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.calendar_widget);

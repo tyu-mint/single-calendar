@@ -147,7 +147,10 @@ public class MainActivity extends Activity {
         scrollView.addView(root, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         setContentView(scrollView);
+        // 打开设置页即主动触发一次今日更新（缺失时后台下载）
         CalendarWidgetProvider.refreshWidgets(this);
+        // 滚动预下载：补齐「已发布但未缓存」的未来日期图片
+        CalendarWidgetProvider.preDownloadAvailable(this);
     }
 
     @Override
