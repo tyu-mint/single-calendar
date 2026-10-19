@@ -167,8 +167,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                         .build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
                 .build();
+        // Do not cancel/restart an active download every time the launcher asks
+        // the provider to redraw. Keeping the existing request prevents update churn.
         WorkManager.getInstance(appContext).enqueueUniqueWork(
-                "single_calendar_refresh", ExistingWorkPolicy.REPLACE, refreshRequest);
+                "single_calendar_refresh", ExistingWorkPolicy.KEEP, refreshRequest);
     }
 
     static boolean downloadToday(Context context) {
@@ -181,8 +183,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             Bitmap cachedBitmap = decodeBitmap(destination);
             Bitmap cachedDarkBitmap = decodeBitmap(darkDestination);
             if (cachedBitmap != null && cachedDarkBitmap != null) {
-                updateAllImages(context, cachedBitmap, cachedDarkBitmap,
-                        date.format(DISPLAY_DATE) + " · 单向历 · 点击打开设置");
+                // refreshWidgets() already rendered these cached images. Avoid
+                // issuing another full RemoteViews update when today's cache is valid.
                 cachedBitmap.recycle();
                 cachedDarkBitmap.recycle();
                 return true;
