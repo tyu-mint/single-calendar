@@ -21,11 +21,9 @@ public final class CalendarRefreshWorker extends Worker {
             return Result.success();
         }
 
-        // The source may publish the day's image slightly late, or connectivity
-        // may be temporarily unavailable. Retry with WorkManager backoff.
-        if (getRunAttemptCount() < 4) {
-            return Result.retry();
-        }
-        return Result.failure();
+        // Keep retrying with WorkManager's capped exponential backoff.
+        // The periodic safety-net worker also continues checking if this work
+        // is delayed or cancelled by the operating system.
+        return Result.retry();
     }
 }
