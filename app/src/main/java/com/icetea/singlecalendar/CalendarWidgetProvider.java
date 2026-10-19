@@ -18,6 +18,17 @@ import android.content.res.Configuration;
 import android.os.Build;
 import android.widget.RemoteViews;
 
+import androidx.work.BackoffPolicy;
+import androidx.work.Constraints;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.NetworkType;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
+import java.util.concurrent.TimeUnit;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -36,6 +47,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_THEME_CHECK = "com.icetea.singlecalendar.THEME_CHECK";
     private static final String PREFS = "widget_theme_state";
     private static final String PREF_DARK = "last_dark_mode";
+    private static final String CACHE_METADATA_PREFS = "calendar_cache_metadata";
+    private static final String PREF_LAST_SUCCESS_DATE = "last_success_date";
     private static final ZoneId BEIJING = ZoneId.of("Asia/Shanghai");
     private static final String CACHE_NAME = "single_calendar_latest.jpg";
     private static final String CACHE_DARK_NAME = "single_calendar_latest_dark.jpg";
@@ -46,6 +59,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         scheduleNextUpdate(context);
+        schedulePeriodicRefresh(context);
         scheduleThemeCheck(context);
         rememberCurrentTheme(context);
         refreshWidgets(context);
@@ -74,6 +88,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
                 || Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
             scheduleNextUpdate(context);
+            schedulePeriodicRefresh(context);
             scheduleThemeCheck(context);
             rememberCurrentTheme(context);
             refreshWidgets(context);
@@ -83,6 +98,19 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     private static void rememberCurrentTheme(Context context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putBoolean(PREF_DARK, isDarkMode(context)).apply();
+    }
+
+    private static void schedulePeriodicRefresh(Context context) {
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build();
+        PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
+                CalendarPeriodicRefreshWorker.class, 6, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
+                .build();
+        WorkManager.getInstance(context.getApplicationContext()).enqueueUniquePeriodicWork(
+                "single_calendar_periodic_refresh", ExistingPeriodicWorkPolicy.KEEP, request);
     }
 
     private static void scheduleThemeCheck(Context context) {
@@ -102,6 +130,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         ComponentName component = new ComponentName(appContext, CalendarWidgetProvider.class);
         int[] ids = manager.getAppWidgetIds(component);
         if (ids == null || ids.length == 0) return;
+        schedulePeriodicRefresh(appContext);
 
         File cached = new File(appContext.getFilesDir(), CACHE_NAME);
         File cachedDark = new File(appContext.getFilesDir(), CACHE_DARK_NAME);
@@ -132,13 +161,37 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             manager.updateAppWidget(id, views);
         }
 
-        Thread worker = new Thread(() -> downloadToday(appContext), "SingleCalendarDownload");
-        worker.setDaemon(true);
-        worker.start();
+        OneTimeWorkRequest refreshRequest = new OneTimeWorkRequest.Builder(CalendarRefreshWorker.class)
+                .setConstraints(new Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build())
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
+                .build();
+        // Do not cancel/restart an active download every time the launcher asks
+        // the provider to redraw. Keeping the existing request prevents update churn.
+        WorkManager.getInstance(appContext).enqueueUniqueWork(
+                "single_calendar_refresh", ExistingWorkPolicy.KEEP, refreshRequest);
     }
 
-    private static void downloadToday(Context context) {
+    static boolean downloadToday(Context context) {
         LocalDate date = LocalDate.now(BEIJING);
+        File destination = new File(context.getFilesDir(), CACHE_NAME);
+        File darkDestination = new File(context.getFilesDir(), CACHE_DARK_NAME);
+        String lastSuccessDate = context.getSharedPreferences(CACHE_METADATA_PREFS, Context.MODE_PRIVATE)
+                .getString(PREF_LAST_SUCCESS_DATE, "");
+        if (date.toString().equals(lastSuccessDate)) {
+            Bitmap cachedBitmap = decodeBitmap(destination);
+            Bitmap cachedDarkBitmap = decodeBitmap(darkDestination);
+            if (cachedBitmap != null && cachedDarkBitmap != null) {
+                // refreshWidgets() already rendered these cached images. Avoid
+                // issuing another full RemoteViews update when today's cache is valid.
+                cachedBitmap.recycle();
+                cachedDarkBitmap.recycle();
+                return true;
+            }
+            if (cachedBitmap != null) cachedBitmap.recycle();
+            if (cachedDarkBitmap != null) cachedDarkBitmap.recycle();
+        }
         String year = date.format(YEAR);
         String monthDay = date.format(MONTH_DAY);
         String imageUrl = "http://img.owspace.com/Public/uploads/Download/" + year + "/" + monthDay + ".jpg";
@@ -155,7 +208,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             int status = connection.getResponseCode();
             if (status != HttpURLConnection.HTTP_OK) {
                 updateFooter(context, "今日图片暂不可用 · 点击重试");
-                return;
+                return false;
             }
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try (InputStream input = connection.getInputStream()) {
@@ -172,15 +225,13 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             Bitmap bitmap = decodeBitmap(bytes);
             if (bitmap == null) {
                 updateFooter(context, "图片格式异常 · 点击重试");
-                return;
+                return false;
             }
-            File destination = new File(context.getFilesDir(), CACHE_NAME);
             try (FileOutputStream fileOutput = new FileOutputStream(destination)) {
                 fileOutput.write(bytes);
                 fileOutput.flush();
             }
             Bitmap darkBitmap = invertedCopy(bitmap);
-            File darkDestination = new File(context.getFilesDir(), CACHE_DARK_NAME);
             try (FileOutputStream darkOutput = new FileOutputStream(darkDestination)) {
                 if (!darkBitmap.compress(Bitmap.CompressFormat.JPEG, 95, darkOutput)) {
                     throw new IllegalStateException("Unable to save dark image");
@@ -188,8 +239,12 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 darkOutput.flush();
             }
             updateAllImages(context, bitmap, darkBitmap, date.format(DISPLAY_DATE) + " · 单向历 · 点击打开设置");
+            context.getSharedPreferences(CACHE_METADATA_PREFS, Context.MODE_PRIVATE).edit()
+                    .putString(PREF_LAST_SUCCESS_DATE, date.toString()).apply();
+            return true;
         } catch (Exception exception) {
             updateFooter(context, "网络暂不可用 · 显示缓存 · 点击重试");
+            return false;
         } finally {
             if (connection != null) connection.disconnect();
         }
