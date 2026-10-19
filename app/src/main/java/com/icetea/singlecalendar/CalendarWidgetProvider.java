@@ -316,6 +316,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     private static void saveBytes(byte[] bytes, File destination) {
+        File parent = destination.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) return;
         try (FileOutputStream fileOutput = new FileOutputStream(destination)) {
             fileOutput.write(bytes);
             fileOutput.flush();
@@ -324,6 +326,8 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
     }
 
     private static void saveBitmap(Bitmap bitmap, File destination) {
+        File parent = destination.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) return;
         try (FileOutputStream fileOutput = new FileOutputStream(destination)) {
             if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 95, fileOutput)) {
                 throw new IllegalStateException("Unable to save image");
