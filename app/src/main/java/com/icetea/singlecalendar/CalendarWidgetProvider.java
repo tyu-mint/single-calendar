@@ -18,6 +18,15 @@ import android.content.res.Configuration;
 import android.os.Build;
 import android.widget.RemoteViews;
 
+import androidx.work.BackoffPolicy;
+import androidx.work.Constraints;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.NetworkType;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+
+import java.util.concurrent.TimeUnit;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -132,12 +141,17 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             manager.updateAppWidget(id, views);
         }
 
-        Thread worker = new Thread(() -> downloadToday(appContext), "SingleCalendarDownload");
-        worker.setDaemon(true);
-        worker.start();
+        OneTimeWorkRequest refreshRequest = new OneTimeWorkRequest.Builder(CalendarRefreshWorker.class)
+                .setConstraints(new Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build())
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
+                .build();
+        WorkManager.getInstance(appContext).enqueueUniqueWork(
+                "single_calendar_refresh", ExistingWorkPolicy.REPLACE, refreshRequest);
     }
 
-    private static void downloadToday(Context context) {
+    static boolean downloadToday(Context context) {
         LocalDate date = LocalDate.now(BEIJING);
         String year = date.format(YEAR);
         String monthDay = date.format(MONTH_DAY);
@@ -155,7 +169,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             int status = connection.getResponseCode();
             if (status != HttpURLConnection.HTTP_OK) {
                 updateFooter(context, "今日图片暂不可用 · 点击重试");
-                return;
+                return false;
             }
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try (InputStream input = connection.getInputStream()) {
@@ -172,7 +186,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             Bitmap bitmap = decodeBitmap(bytes);
             if (bitmap == null) {
                 updateFooter(context, "图片格式异常 · 点击重试");
-                return;
+                return false;
             }
             File destination = new File(context.getFilesDir(), CACHE_NAME);
             try (FileOutputStream fileOutput = new FileOutputStream(destination)) {
@@ -188,8 +202,10 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
                 darkOutput.flush();
             }
             updateAllImages(context, bitmap, darkBitmap, date.format(DISPLAY_DATE) + " · 单向历 · 点击打开设置");
+            return true;
         } catch (Exception exception) {
             updateFooter(context, "网络暂不可用 · 显示缓存 · 点击重试");
+            return false;
         } finally {
             if (connection != null) connection.disconnect();
         }
